@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a365d">
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: #f1f5f9; margin: 0; padding: 12px; color: #1e293b; padding-bottom: 80px; }
+    .header { background: linear-gradient(135deg, #1a365d, #0f172a); color: #fff; padding: 14px; border-radius: 14px; text-align: center; margin-bottom: 10px; }
+    .header h2 { margin: 0; font-size: 1.1rem; font-weight: 800; }
+    .header p { margin: 4px 0 0; font-size: .78rem; color: #94a3b8; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tab { flex: 1; padding: 11px 6px; border: 0; border-radius: 10px; background: #e2e8f0; color: #334155; font-weight: 800; font-size: .85rem; }
+    .tab.activa { background: #1a365d; color: #fff; }
+    .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-radius: 10px; font-size: .8rem; font-weight: 800; margin-bottom: 10px; }
+    .online { background: #dcfce7; color: #166534; } .sync { background: #e0f2fe; color: #0369a1; } .offline { background: #fee2e2; color: #991b1b; }
+    .badge { background: #991b1b; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: .72rem; }
+    .card { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 4px solid #1a365d; }
+    .card-title { font-size: .88rem; font-weight: 800; color: #1a365d; margin-bottom: 8px; }
+    label { display: block; font-size: .78rem; font-weight: 700; margin: 8px 0 3px; color: #475569; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: .92rem; background: #fff; color: #1e293b; }
+    .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .item { padding: 10px 0; border-top: 1px solid #f1f5f9; }
+    .item:first-of-type { border-top: 0; }
+    .item-nombre { font-size: .86rem; font-weight: 700; margin-bottom: 6px; }
+    .item-nombre small { color: #64748b; font-weight: 600; }
+    .opciones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 6px; }
+    .opciones.tres { grid-template-columns: repeat(3, 1fr); }
+    .op { padding: 9px 2px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc; font-weight: 800; font-size: .74rem; color: #475569; }
+    .op.sel[data-v="ALTA"], .op.sel[data-v="No ejecutado"] { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .op.sel[data-v="MEDIA"] { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+    .op.sel[data-v="BAJA"], .op.sel[data-v="Ejecutado"] { background: #16a34a; border-color: #16a34a; color: #fff; }
+    .op.sel[data-v="N/A"] { background: #64748b; border-color: #64748b; color: #fff; }
+    .obs { font-size: .85rem; padding: 8px; }
+    .obs.falta { border-color: #dc2626; background: #fef2f2; }
+    .item.falta .opciones { outline: 2px solid #dc2626; outline-offset: 2px; border-radius: 8px; }
+    .foto-fila { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .btn-foto { padding: 7px 10px; border: 1.5px dashed #94a3b8; border-radius: 8px; background: #fff; font-size: .78rem; font-weight: 700; color: #334155; }
+    .foto-fila img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+    .quitar { border: 0; background: none; color: #dc2626; font-weight: 800; font-size: .78rem; }
+    .previo { background: #f8fafc; border-radius: 8px; padding: 7px 9px; font-size: .8rem; margin-bottom: 6px; color: #334155; }
+    .previo b { margin-right: 4px; }
+    .btn { width: 100%; background: #1a365d; color: #fff; border: 0; padding: 15px; border-radius: 10px; font-size: 1rem; font-weight: 800; margin-top: 6px; }
+    .btn:disabled { opacity: .6; }
+    .btn.sec { background: #e2e8f0; color: #1a365d; }
+    #msg { display: none; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-weight: 700; font-size: .88rem; line-height: 1.4; white-space: pre-line; }
+    .msg-ok { background: #dcfce7; color: #15803d; } .msg-warn { background: #fef3c7; color: #b45309; } .msg-err { background: #fee2e2; color: #991b1b; }
+    .btn-pdf { display: inline-block; margin-top: 8px; padding: 9px 14px; background: #15803d; color: #fff !important; border-radius: 8px; text-decoration: none; }
+    .oculto { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>📋 CHECKLIST CAMBIO DE CINTAS</h2>
+    <p>MSMIN · Control en terreno</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab activa" data-modo="previa">Inspección previa</button>
+    <button class="tab" data-modo="post">Verificación post</button>
+  </div>
+
+  <div id="statusBar" class="status-bar online"><span id="statusTxt"></span><span id="badge" class="badge oculto"></span></div>
+  <div id="msg"></div>
+
+  <!-- ============ INSPECCIÓN PREVIA ============ -->
+  <form id="formPrevia" novalidate>
+    <div class="card">
+      <div class="card-title">1. Datos de la inspección</div>
+      <label>TAG equipo</label><select id="p_tag" required></select>
+      <label>Área / Planta</label><input id="p_area" readonly>
+      <div class="fila2">
+        <div><label>Fecha</label><input type="date" id="p_fecha" required></div>
+        <div><label>Turno</label><select id="p_turno"><option>Turno Día</option><option>Turno Noche</option></select></div>
+      </div>
+      <label>Inspector</label><input id="p_inspector" required>
+      <div class="fila2">
+        <div><label>Cargo</label><input id="p_cargo" value="INSPECTOR"></div>
+        <div><label>Empresa</label><input id="p_empresa" value="MSMIN"></div>
+      </div>
+    </div>
+    <div id="p_items"></div>
+    <div class="card">
+      <div class="card-title">4. Dictamen</div>
+      <label>Resultado de la inspección</label>
+      <select id="p_resultado" required><option value="">Seleccionar…</option><option>Aprobado</option><option>Observado / Con hallazgos</option><option>Rechazado</option></select>
+      <label>Resumen del dictamen / conclusión</label><textarea id="p_resumen" rows="3"></textarea>
+      <div class="fila2">
+        <div><label>¿Corregir durante mantenimiento?</label><select id="p_corregir"><option>Si</option><option>No</option></select></div>
+        <div><label>¿Requiere verificación posterior?</label><select id="p_verifPosterior"><option>Si</option><option>No</option></select></div>
+      </div>
+    </div>
+    <button type="submit" class="btn" id="p_enviar">💾 GUARDAR Y DESCARGAR PDF</button>
+  </form>
+
+  <!-- ============ VERIFICACIÓN POST ============ -->
+  <form id="formPost" class="oculto" novalidate>
+    <div class="card">
+      <div class="card-title">1. Inspección a verificar</div>
+      <button type="button" class="btn sec" id="v_cargarLista">🔄 Cargar inspecciones pendientes</button>
+      <label>N° inspección previa</label><select id="v_folio"><option value="">—</option></select>
+      <div id="v_resumen" class="previo oculto"></div>
+    </div>
+    <div id="v_cuerpo" class="oculto">
+      <div class="card">
+        <div class="card-title">2. Datos de la verificación</div>
+        <label>Fecha verificación</label><input type="date" id="v_fecha" required>
+        <label>Inspector verificación</label><input id="v_inspector" required>
+        <div class="fila2">
+          <div><label>Cargo</label><input id="v_cargo" value="INSPECTOR"></div>
+          <div><label>Empresa</label><input id="v_empresa" value="MSMIN"></div>
+        </div>
+      </div>
+      <div id="v_items"></div>
+      <div class="card">
+        <div class="card-title">4. Dictamen post mantenimiento</div>
+        <label>Conclusiones y conformidad</label><textarea id="v_conclusiones" rows="3"></textarea>
+        <label>¿Se levantaron todos los hallazgos?</label>
+        <select id="v_levantados"><option>SÍ (100% de condiciones corregidas)</option><option>NO (quedan hallazgos pendientes)</option></select>
+        <label>¿El equipo queda liberado?</label>
+        <select id="v_liberado"><option value="">Seleccionar…</option><option>Liberado para operación</option><option>Liberado con pruebas / seguimiento posterior</option><option>No liberado</option></select>
+      </div>
+      <button type="submit" class="btn" id="v_enviar">✅ GUARDAR VERIFICACIÓN Y DESCARGAR PDF</button>
+    </div>
+  </form>
+
+<script>
+const DATOS = <?!= datos ?>;
+const $ = function (id) { return document.getElementById(id); };
+let enProceso = false;
+let inspeccionCargada = null;
+
+// ---------- Cola sin señal (IndexedDB: admite fotos) ----------
+const cola = (function () {
+  let dbp;
+  function db() {
+    if (!dbp) dbp = new Promise(function (ok, mal) {
+      const r = indexedDB.open('checklist_cintas', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('cola', { keyPath: 'datos.idEnvio' }); };
+      r.onsuccess = function () { ok(r.result); };
+      r.onerror = function () { mal(r.error); };
+    });
+    return dbp;
+  }
+  function tx(modo, fn) {
+    return db().then(function (d) {
+      return new Promise(function (ok, mal) {
+        const t = d.transaction('cola', modo); const s = t.objectStore('cola'); const r = fn(s);
+        t.oncomplete = function () { ok(r && r.result); }; t.onerror = function () { mal(t.error); };
+      });
+    });
+  }
+  return {
+    agregar: function (env) { return tx('readwrite', function (s) { return s.put(env); }); },
+    quitar: function (id) { return tx('readwrite', function (s) { return s.delete(id); }); },
+    listar: function () { return tx('readonly', function (s) { return s.getAll(); }); }
+  };
+})();
+
+// ---------- Utilidades ----------
+function hoy() { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+function nuevoId() { return String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8); }
+function el(tag, attrs, texto) {
+  const e = document.createElement(tag);
+  Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+function mensaje(texto, tipo, pdf) {
+  const m = $('msg'); m.className = 'msg-' + tipo; m.textContent = texto;
+  if (pdf) { const a = el('a', { href: pdf.url, download: pdf.nombre, class: 'btn-pdf' }, '📥 Descargar ' + pdf.nombre); m.appendChild(el('br')); m.appendChild(a); }
+  m.style.display = 'block'; window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function descargarPdf(base64, nombre) {
+  const bytes = atob(base64); const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+  const a = el('a', { href: url, download: nombre }); document.body.appendChild(a); a.click(); a.remove();
+  return { url: url, nombre: nombre };
+}
+function llamar(fn, arg) {
+  return new Promise(function (ok, mal) { google.script.run.withSuccessHandler(ok).withFailureHandler(mal)[fn](arg); });
+}
+function guardarLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function leerLocal(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+
+/** Reduce la foto a 1280 px y JPEG 70% (~150 KB) para que viaje bien con poca señal. */
+function comprimirFoto(archivo) {
+  return new Promise(function (ok, mal) {
+    const img = new Image(); const url = URL.createObjectURL(archivo);
+    img.onload = function () {
+      const max = 1280, k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok({ nombre: archivo.name, dataUrl: c.toDataURL('image/jpeg', 0.7) });
+    };
+    img.onerror = mal; img.src = url;
+  });
+}
+
+// ---------- Estado de conexión ----------
+function refrescarEstado() {
+  cola.listar().then(function (pend) {
+    const n = (pend || []).length, bar = $('statusBar'), txt = $('statusTxt'), b = $('badge');
+    b.classList.toggle('oculto', !n); b.textContent = n + ' pendiente(s)';
+    if (enProceso) { bar.className = 'status-bar sync'; txt.textContent = '🔄 Guardando y generando PDF…'; }
+    else if (!navigator.onLine) { bar.className = 'status-bar offline'; txt.textContent = '🔴 Sin señal · se guarda en el celular'; }
+    else if (n) { bar.className = 'status-bar sync'; txt.textContent = '⚡ Enviando pendientes…'; }
+    else { bar.className = 'status-bar online'; txt.textContent = '🟢 En línea · planilla al día'; }
+  });
+}
+
+// ---------- Construcción de ítems ----------
+function grupoOpciones(valores, nombre) {
+  const g = el('div', { class: 'opciones' + (valores.length === 3 ? ' tres' : ''), 'data-nombre': nombre });
+  valores.forEach(function (v) {
+    const b = el('button', { type: 'button', class: 'op', 'data-v': v }, v);
+    b.onclick = function () {
+      g.querySelectorAll('.op').forEach(function (o) { o.classList.remove('sel'); });
+      b.classList.add('sel'); g.dataset.valor = v; g.closest('.item').classList.remove('falta');
+      g.dispatchEvent(new Event('cambio', { bubbles: true }));
+    };
+    g.appendChild(b);
+  });
+  return g;
+}
+function seleccionar(g, v) { const b = g.querySelector('.op[data-v="' + v + '"]'); if (b) b.click(); }
+
+function armarPrevia() {
+  const cont = $('p_items'); let card = null, seccion = null, n = 1;
+  DATOS.items.forEach(function (it) {
+    if (it.seccion !== seccion) {
+      seccion = it.seccion; card = el('div', { class: 'card' });
+      card.appendChild(el('div', { class: 'card-title' }, it.seccion + ' ' + (DATOS.secciones[it.seccion] || '')));
+      cont.appendChild(card);
+    }
+    const bloque = el('div', { class: 'item', 'data-codigo': it.codigo });
+    const t = el('div', { class: 'item-nombre' }); t.appendChild(el('small', {}, it.codigo + ' ')); t.appendChild(document.createTextNode(it.nombre));
+    bloque.appendChild(t);
+    bloque.appendChild(grupoOpciones(DATOS.criticidades, 'criticidad'));
+    bloque.appendChild(el('input', { class: 'obs', placeholder: 'Observación / hallazgo' }));
+    const ff = el('div', { class: 'foto-fila' });
+    const input = el('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'oculto' });
+    const btn = el('button', { type: 'button', class: 'btn-foto' }, '📷 Foto');
+    const prev = el('img', { class: 'oculto', alt: '' });
+    const quitar = el('button', { type: 'button', class: 'quitar oculto' }, 'Quitar');
+    btn.onclick = function () { input.click(); };
+    input.onchange = function () {
+      if (!input.files[0]) return;
+      comprimirFoto(input.files[0]).then(function (f) {
+        bloque._foto = f; prev.src = f.dataUrl; prev.classList.remove('oculto'); quitar.classList.remove('oculto'); btn.textContent = '📷 Cambiar';
+      }).catch(function () { mensaje('No se pudo leer la foto.', 'err'); });
+    };
+    quitar.onclick = function () { bloque._foto = null; prev.classList.add('oculto'); quitar.classList.add('oculto'); btn.textContent = '📷 Foto'; input.value = ''; };
+    [input, btn, prev, quitar].forEach(function (x) { ff.appendChild(x); });
+    bloque.appendChild(ff);
+    card.appendChild(bloque);
+  });
+
+  const sel = $('p_tag'); sel.appendChild(el('option', { value: '' }, 'Seleccionar…'));
+  DATOS.equipos.forEach(function (e) { sel.appendChild(el('option', { value: e.tag }, e.tag)); });
+  sel.onchange = function () { const e = DATOS.equipos.find(function (x) { return x.tag === sel.value; }); $('p_area').value = e ? e.area : ''; };
+  $('p_fecha').value = hoy();
+
+  const ult = leerLocal('cintas_ultimos_datos') || {};
+  ['inspector', 'cargo', 'empresa', 'turno'].forEach(function (k) { if (ult[k]) $('p_' + k).value = ult[k]; });
+}
+
+function recopilarPrevia() {
+  const items = {};
+  document.querySelectorAll('#p_items .item').forEach(function (b) {
+    items[b.dataset.codigo] = { criticidad: b.querySelector('.opciones').dataset.valor || '', obs: b.querySelector('.obs').value, foto: b._foto || null };
+  });
+  return {
+    idEnvio: nuevoId(), tag: $('p_tag').value, area: $('p_area').value, fecha: $('p_fecha').value, turno: $('p_turno').value,
+    inspector: $('p_inspector').value.trim().toUpperCase(), cargo: $('p_cargo').value.trim().toUpperCase(), empresa: $('p_empresa').value.trim().toUpperCase(),
+    items: items, resultado: $('p_resultado').value, resumen: $('p_resumen').value, corregir: $('p_corregir').value, verifPosterior: $('p_verifPosterior').value
+  };
+}
+
+/** Devuelve la lista de errores y marca en rojo lo que falta. */
+function validarPrevia(d) {
+  const errores = [], sinFoto = [];
+  ['tag', 'fecha', 'inspector', 'resultado'].forEach(function (k) { if (!d[k]) errores.push('Falta ' + k); });
+  document.querySelectorAll('#p_items .item').forEach(function (b) {
+    const r = d.items[b.dataset.codigo], obs = b.querySelector('.obs');
+    obs.classList.remove('falta');
+    if (!r.criticidad) { b.classList.add('falta'); errores.push(b.dataset.codigo + ': falta criticidad'); }
+    else if (r.criticidad !== 'BAJA' && !r.obs.trim()) { obs.classList.add('falta'); errores.push(b.dataset.codigo + ': ' + r.criticidad + ' requiere observación'); }
+    if (r.criticidad === 'ALTA' && !r.foto) sinFoto.push(b.dataset.codigo);
+  });
+  return { errores: errores, sinFoto: sinFoto };
+}
+
+// ---------- Verificación post ----------
+function cargarLista() {
+  if (!navigator.onLine) { mensaje('Se necesita señal para cargar la lista. Si ya cargaste una inspección, sigue disponible.', 'warn'); return; }
+  $('v_cargarLista').disabled = true;
+  llamar('listarPendientesVerificacion').then(function (lista) {
+    guardarLocal('cintas_pendientes', lista); llenarLista(lista);
+    mensaje(lista.length ? lista.length + ' inspección(es) pendiente(s) de verificación.' : 'No hay inspecciones pendientes.', 'ok');
+  }).catch(function (e) { mensaje('Error: ' + e.message, 'err'); }).finally(function () { $('v_cargarLista').disabled = false; });
+}
+function llenarLista(lista) {
+  const s = $('v_folio'); s.innerHTML = ''; s.appendChild(el('option', { value: '' }, 'Seleccionar…'));
+  (lista || []).forEach(function (x) { s.appendChild(el('option', { value: x.folio }, x.folio + ' · ' + x.tag + ' · ' + x.fecha)); });
+}
+function cargarInspeccion(folio) {
+  if (!folio) return;
+  const cache = leerLocal('cintas_insp_' + folio);
+  const usar = function (insp) { inspeccionCargada = insp; guardarLocal('cintas_insp_' + folio, insp); armarPost(insp); };
+  if (!navigator.onLine) { if (cache) usar(cache); else mensaje('Sin señal y sin copia local de ' + folio + '.', 'warn'); return; }
+  llamar('obtenerInspeccion', folio).then(usar).catch(function (e) { if (cache) usar(cache); else mensaje('Error: ' + e.message, 'err'); });
+}
+function armarPost(insp) {
+  const r = $('v_resumen'); r.classList.remove('oculto');
+  r.textContent = insp.tag + ' · ' + insp.area + ' · inspección del ' + insp.fecha + ' · resultado: ' + (insp.resultado || '—');
+  const cont = $('v_items'); cont.innerHTML = '';
+  const conHallazgo = insp.items.filter(function (it) { return String(it.criticidad).toUpperCase() !== 'N/A' && it.criticidad; });
+  const card = el('div', { class: 'card' });
+  card.appendChild(el('div', { class: 'card-title' }, '3. Hallazgos a verificar (' + conHallazgo.length + ')'));
+  conHallazgo.forEach(function (it) {
+    const b = el('div', { class: 'item', 'data-codigo': it.codigo });
+    const t = el('div', { class: 'item-nombre' }); t.appendChild(el('small', {}, it.codigo + ' ')); t.appendChild(document.createTextNode(it.nombre));
+    b.appendChild(t);
+    const p = el('div', { class: 'previo' }); p.appendChild(el('b', {}, it.criticidad)); p.appendChild(document.createTextNode(it.obs || 'Sin observación'));
+    b.appendChild(p);
+    const g = grupoOpciones(DATOS.estatus, 'estatus'); b.appendChild(g);
+    b.appendChild(el('input', { class: 'obs', placeholder: 'Condición actual (obligatoria si no se ejecutó o N/A)' }));
+    if (it.estatus) seleccionar(g, it.estatus);
+    if (it.condicion) b.querySelector('.obs').value = it.condicion;
+    card.appendChild(b);
+  });
+  cont.appendChild(card);
+  $('v_cuerpo').classList.remove('oculto');
+  if (!$('v_fecha').value) $('v_fecha').value = hoy();
+  const ult = leerLocal('cintas_ultimos_datos') || {};
+  if (ult.inspector && !$('v_inspector').value) $('v_inspector').value = ult.inspector;
+}
+function recopilarPost() {
+  const items = {};
+  document.querySelectorAll('#v_items .item').forEach(function (b) {
+    items[b.dataset.codigo] = { estatus: b.querySelector('.opciones').dataset.valor || '', condicion: b.querySelector('.obs').value };
+  });
+  return {
+    idEnvio: nuevoId(), folio: $('v_folio').value, fechaVerif: $('v_fecha').value,
+    inspectorVerif: $('v_inspector').value.trim().toUpperCase(), cargoVerif: $('v_cargo').value.trim().toUpperCase(), empresaVerif: $('v_empresa').value.trim().toUpperCase(),
+    items: items, conclusiones: $('v_conclusiones').value, levantados: $('v_levantados').value, liberado: $('v_liberado').value
+  };
+}
+function validarPost(d) {
+  const errores = [];
+  if (!d.folio) errores.push('Selecciona la inspección');
+  if (!d.inspectorVerif) errores.push('Falta inspector');
+  if (!d.liberado) errores.push('Indica si el equipo queda liberado');
+  document.querySelectorAll('#v_items .item').forEach(function (b) {
+    const r = d.items[b.dataset.codigo], obs = b.querySelector('.obs'); obs.classList.remove('falta');
+    if (!r.estatus) { b.classList.add('falta'); errores.push(b.dataset.codigo + ': falta estatus'); }
+    else if (r.estatus !== 'Ejecutado' && !r.condicion.trim()) { obs.classList.add('falta'); errores.push(b.dataset.codigo + ': justificar condición'); }
+  });
+  return errores;
+}
+
+// ---------- Envío y sincronización ----------
+const FUNCION = { previa: 'registrarInspeccionPrevia', post: 'registrarVerificacion' };
+
+function enviar(envio) {
+  enProceso = true; refrescarEstado();
+  return llamar(FUNCION[envio.tipo], envio.datos).then(function (res) {
+    if (!res || res.status !== 'ok') throw { rechazo: true, message: res ? res.message : 'Respuesta vacía' };
+    return cola.quitar(envio.datos.idEnvio).then(function () {
+      const pdf = res.base64 ? descargarPdf(res.base64, res.filename) : null;
+      mensaje('✅ ' + (envio.tipo === 'previa' ? 'Inspección ' : 'Verificación ') + res.folio + ' guardada.', 'ok', pdf);
+      return res;
+    });
+  }).finally(function () { enProceso = false; refrescarEstado(); });
+}
+
+/** Guarda primero en el celular y luego intenta enviar: nada se pierde si se corta la señal. */
+function guardarYEnviar(tipo, datos, onOk) {
+  const envio = { tipo: tipo, datos: datos, creado: Date.now() };
+  cola.agregar(envio).then(function () {
+    onOk();
+    if (!navigator.onLine) { refrescarEstado(); mensaje('📱 Sin señal: quedó guardada en el celular y se enviará sola al recuperar conexión.', 'warn'); return; }
+    return enviar(envio).catch(function (e) {
+      if (e && e.rechazo) { cola.quitar(datos.idEnvio); mensaje('⚠️ La planilla rechazó el envío:\n' + e.message, 'err'); }
+      else mensaje('⚠️ Falló la conexión. Quedó guardada en el celular y se reintentará.', 'warn');
+    });
+  }).catch(function () { mensaje('No se pudo guardar en el celular. Revisa el espacio disponible.', 'err'); });
+}
+
+function sincronizar() {
+  if (enProceso || !navigator.onLine) return;
+  cola.listar().then(function (pend) {
+    if (!pend || !pend.length) return;
+    pend.sort(function (a, b) { return a.creado - b.creado; });
+    return enviar(pend[0]).then(sincronizar).catch(function (e) {
+      if (e && e.rechazo) { cola.quitar(pend[0].datos.idEnvio).then(refrescarEstado); mensaje('⚠️ Un pendiente fue rechazado:\n' + e.message, 'err'); }
+    });
+  });
+}
+
+// ---------- Eventos ----------
+document.querySelectorAll('.tab').forEach(function (t) {
+  t.onclick = function () {
+    document.querySelectorAll('.tab').forEach(function (x) { x.classList.toggle('activa', x === t); });
+    $('formPrevia').classList.toggle('oculto', t.dataset.modo !== 'previa');
+    $('formPost').classList.toggle('oculto', t.dataset.modo !== 'post');
+    $('msg').style.display = 'none';
+  };
+});
+
+$('formPrevia').onsubmit = function (ev) {
+  ev.preventDefault();
+  const d = recopilarPrevia(), v = validarPrevia(d);
+  if (v.errores.length) { mensaje('Revisa ' + v.errores.length + ' punto(s) marcados en rojo:\n' + v.errores.slice(0, 8).join('\n') + (v.errores.length > 8 ? '\n…' : ''), 'err'); return; }
+  if (v.sinFoto.length && !confirm('Ítems ALTA sin foto: ' + v.sinFoto.join(', ') + '\n\n¿Guardar de todas formas?')) return;
+  guardarLocal('cintas_ultimos_datos', { inspector: d.inspector, cargo: d.cargo, empresa: d.empresa, turno: d.turno });
+  guardarYEnviar('previa', d, function () {
+    $('formPrevia').reset(); $('p_fecha').value = hoy();
+    document.querySelectorAll('#p_items .item').forEach(function (b) {
+      b._foto = null; delete b.querySelector('.opciones').dataset.valor;
+      b.querySelectorAll('.op').forEach(function (o) { o.classList.remove('sel'); });
+      b.querySelectorAll('img, .quitar').forEach(function (x) { x.classList.add('oculto'); });
+      b.querySelector('.btn-foto').textContent = '📷 Foto';
+    });
+    const ult = leerLocal('cintas_ultimos_datos') || {};
+    ['inspector', 'cargo', 'empresa', 'turno'].forEach(function (k) { if (ult[k]) $('p_' + k).value = ult[k]; });
+  });
+};
+
+$('formPost').onsubmit = function (ev) {
+  ev.preventDefault();
+  const d = recopilarPost(), e = validarPost(d);
+  if (e.length) { mensaje('Revisa ' + e.length + ' punto(s):\n' + e.slice(0, 8).join('\n'), 'err'); return; }
+  guardarYEnviar('post', d, function () {
+    const lista = (leerLocal('cintas_pendientes') || []).filter(function (x) { return x.folio !== d.folio; });
+    guardarLocal('cintas_pendientes', lista); llenarLista(lista);
+    $('v_cuerpo').classList.add('oculto'); $('v_resumen').classList.add('oculto'); $('v_conclusiones').value = '';
+  });
+};
+
+$('v_cargarLista').onclick = cargarLista;
+$('v_folio').onchange = function () { cargarInspeccion(this.value); };
+window.addEventListener('online', function () { refrescarEstado(); sincronizar(); });
+window.addEventListener('offline', refrescarEstado);
+setInterval(sincronizar, 15000);
+
+armarPrevia();
+llenarLista(leerLocal('cintas_pendientes'));
+refrescarEstado();
+sincronizar();
+</script>
+</body>
+</html>
