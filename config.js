@@ -4,5 +4,5 @@
  * La puedes editar directamente en GitHub: abre este archivo y toca el lápiz ✏️.
  */
 window.CONFIG_APP = {
-  API_URL: "PEGAR_AQUI_LA_URL_QUE_TERMINA_EN_/exec"
+  API_URL: "https://script.google.com/macros/s/AKfycbyC82xijohPVl6rvWElqqLWQBr8_mSNum--lgEQhGXLSnMglh605WeIpMlL0fo8KN-WpA/exec"
 };
