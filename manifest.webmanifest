@@ -1,7 +1,7 @@
 {
   "name": "Inspección Cintas Transportadoras · MSMIN",
   "short_name": "Inspección Cintas",
-  "description": "Inspección pre y verificación post mantenimiento de cintas transportadoras · MSMIN",
+  "description": "Gestión de cintas transportadoras · MSMIN: checklist de cambio de cinta, mapeo, espesores, reportes y administración",
   "lang": "es",
   "start_url": "./",
   "scope": "./",

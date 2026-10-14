@@ -1,13 +1,26 @@
 /**
- * Service worker · Checklist Cintas
+ * Service worker · Inspección Cintas (menú + las 6 actividades + Administración)
  * Guarda la app en el celular para que abra aunque no haya señal.
  * Al publicar cambios en index.html, sube el número de VERSION para forzar la actualización.
  */
-const VERSION = 'inspeccion-cintas-v2';
+const VERSION = 'inspeccion-cintas-v6';
 const ARCHIVOS = [
   './',
   './index.html',
+  './checklist.html',
+  './mapeo.html',
+  './espesores.html',
+  './semanal.html',
+  './pauta.html',
+  './flash.html',
+  './admin.html',
+  './sesion.js',
+  './puente.js',
+  './preparar.js',
+  './funciones.js',
   './config.js',
+  './icons/logo-msmin.jpg',
+  './icons/logo-codelco.jpg',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- App instalable Inspección Cintas: sesión + funcionamiento sin señal -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#0b2545">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Inspección Cintas">
+  <script src="config.js"></script>
+  <script src="sesion.js"></script>
+  <script src="funciones.js"></script>
+  <script>window.PUENTE = {"modulo": "GENERAL", "app": "admin"};</script>
+  <script src="puente.js"></script>
+  <script src="preparar.js"></script>
+
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administración · Inspección Cintas</title>
+  <style>
+  /* Misma paleta y tipografía que la app Mapeo de Cintas y los encabezados de la planilla */
+  :root{
+    --azul:#2F5597; --azul-osc:#1F3864; --azul-claro:#DAE3F3; --gris:#D9D9D9; --gris2:#A6A6A6; --gris-fondo:#EEF1F5;
+    --borde:#9AA4B2; --texto:#1d2330; --muted:#5f6b7a; --ok:#00B050; --rojo:#C00000; --amarillo:#FFC000;
+    --radio:6px; --sombra:0 1px 3px rgba(0,0,0,.12),0 4px 14px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--gris-fondo);color:var(--texto);font:14px/1.4 Calibri,"Segoe UI",Roboto,Arial,sans-serif}
+  button,input,select,textarea{font:inherit;color:inherit}
+  a{color:var(--azul)}
+  .top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--azul);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2);flex-wrap:wrap}
+  .logos-top{display:inline-flex;align-items:center;gap:10px;background:#fff;border-radius:5px;padding:3px 10px;height:46px}
+  .logos-top img{height:38px;width:auto;display:block}
+  .logos-top img+img{border-left:1px solid #ddd;padding-left:10px}
+  .top h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px;line-height:1.1}
+  .top h1 small{display:block;font-weight:400;font-size:12px;opacity:.85}
+  .top .sp{flex:1}
+  .chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;color:#fff}
+  .top select{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:4px 8px;font-size:12px}
+  .top select option{color:#111}
+  main{max-width:1300px;margin:0 auto;padding:16px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--azul);background:#fff;color:var(--azul);padding:7px 12px;border-radius:var(--radio);cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap;text-decoration:none}
+  .btn:hover{background:var(--azul-claro)}
+  .btn.pri{background:var(--azul);color:#fff}.btn.pri:hover{background:var(--azul-osc)}
+  .btn.peligro{border-color:var(--rojo);color:var(--rojo)}.btn.peligro:hover{background:#fde8e8}
+  .btn.sm{padding:4px 8px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .toolbar .titulo{font-size:20px;font-weight:700;margin-right:8px}
+  .caja{background:#fff;border-radius:var(--radio);box-shadow:var(--sombra);padding:14px 16px;margin-bottom:14px}
+  .caja h2{margin:0 0 10px;font-size:17px;color:var(--azul-osc)}
+  .muted{color:var(--muted)}
+  .vacio{padding:30px;text-align:center;color:var(--muted)}
+  .badge{display:inline-block;border-radius:3px;padding:1px 7px;font-size:11px;font-weight:700;border:1px solid rgba(0,0,0,.2)}
+  .b-admin{background:#1F3864;color:#fff}.b-editor{background:#92D050}.b-lector{background:#FFF4CE}.b-ninguno{background:#eee;color:#888}.b-no{background:#fde8e8;color:#C00000}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--azul);margin-bottom:14px}
+  .tabs button{border:1px solid var(--gris);border-bottom:0;background:#fff;color:var(--azul);padding:8px 14px;border-radius:6px 6px 0 0;cursor:pointer;font-weight:700}
+  .tabs button.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+  .form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+  .form>*{min-width:0}
+  .form .c2{grid-column:span 2}.form .c4{grid-column:1/-1}
+  .form label{display:block;font-size:11.5px;font-weight:700;color:var(--azul-osc);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+  .form input,.form select,.form textarea{width:100%;padding:7px 8px;border:1px solid var(--borde);border-radius:4px;background:#fff}
+  .form input:focus,.form select:focus,.form textarea:focus{outline:2px solid var(--azul);outline-offset:-1px}
+  .form input[readonly],.form textarea[readonly]{background:#f3f4f6;color:#555}
+  .form fieldset{grid-column:1/-1;min-width:0;border:1px solid var(--gris);border-radius:6px;padding:10px;margin:0}
+  .form legend{font-weight:700;color:var(--azul);padding:0 6px}
+  .sub{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+  .sub>*{min-width:0}
+  .hint{font-size:11.5px;color:var(--muted)}
+  .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.t{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
+  table.t th{background:var(--azul);color:#fff;padding:6px;font-size:12px;text-align:left;border:1px solid #fff;white-space:nowrap}
+  table.t td{border:1px solid var(--gris);padding:5px 6px;vertical-align:top;max-width:340px}
+  table.t tr:hover td{background:#f1f5fc}
+  table.t td.acc{white-space:nowrap}
+  table.t tr.inactivo td{color:#999;text-decoration:line-through}
+  .corto{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:24px 10px;overflow:auto}
+  .modal{background:#fff;border-radius:8px;width:min(980px,100%);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  .modal.sm{width:min(480px,100%)}
+  .modal header{background:var(--azul);color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .modal header h3{margin:0;font-size:16px}
+  .modal header button{background:none;border:0;color:#fff;font-size:22px;cursor:pointer;line-height:1}
+  .modal .cont{padding:14px 16px;max-height:calc(100vh - 170px);overflow:auto}
+  .modal footer{padding:10px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .modal footer .izq{margin-right:auto}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 16px;border-radius:6px;z-index:80;box-shadow:var(--sombra);max-width:90vw}
+  .toast.err{background:var(--rojo)}
+  .cargando{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:90;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-weight:700;color:var(--azul)}
+  .spin{width:42px;height:42px;border:5px solid var(--azul-claro);border-top-color:var(--azul);border-radius:50%;animation:g .8s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+  @media (max-width:900px){ .form,.sub{grid-template-columns:repeat(2,minmax(0,1fr))} .top h1 small{display:none} .logos-top{height:36px;padding:2px 6px}.logos-top img{height:28px} }
+  @media (max-width:520px){ .form,.sub{grid-template-columns:minmax(0,1fr)} .form .c2{grid-column:auto} main{padding:10px} }
+</style>
+
+</head>
+<body>
+  <div class="top">
+    <span id="logos"></span>
+    <h1>Administración<small id="sub">Cargando…</small></h1>
+    <div class="sp"></div>
+    <a class="chip" id="bInicio" style="text-decoration:none">⌂ Inicio</a>
+    <span class="chip" id="chipUser">👤 —</span>
+  </div>
+  <main>
+    <div class="tabs" id="tabs"></div>
+    <div id="view"><div class="vacio">Cargando…</div></div>
+  </main>
+  <script>
+/* Utilidades comunes de Inicio y Administración */
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function api(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (ok, mal) {
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { mal(e && e.message ? e : new Error(String(e))); });
+    r[fn].apply(r, args);
+  });
+}
+var cargas = 0;
+function cargando(on, txt) {
+  cargas += on ? 1 : -1; if (cargas < 0) cargas = 0;
+  var d = $('#cargando');
+  if (cargas > 0) {
+    if (!d) { d = document.createElement('div'); d.id = 'cargando'; d.className = 'cargando'; d.innerHTML = '<div class="spin"></div><div id="cargTxt"></div>'; document.body.appendChild(d); }
+    $('#cargTxt').textContent = txt || 'Procesando…';
+  } else if (d) d.remove();
+}
+function llamar(fn, args, txt) {
+  cargando(true, txt);
+  return api.apply(null, [fn].concat(args || [])).then(function (r) { cargando(false); return r; },
+    function (e) { cargando(false); toast(e.message || e, true); throw e; });
+}
+function toast(msg, err) {
+  var t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; document.body.appendChild(t);
+  setTimeout(function () { t.remove(); }, err ? 7000 : 3000);
+}
+function modal(o) {
+  var bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = '<div class="modal ' + (o.sm ? 'sm' : '') + '"><header><h3>' + o.titulo + '</h3><button data-x>×</button></header>' +
+    '<div class="cont">' + o.cuerpo + '</div><footer><span class="izq"></span></footer></div>';
+  document.body.appendChild(bg);
+  var cerrar = function () { bg.remove(); };
+  bg.querySelector('[data-x]').onclick = cerrar;
+  var foot = bg.querySelector('footer');
+  (o.izquierda || []).forEach(function (b) { foot.querySelector('.izq').appendChild(boton(b, cerrar)); });
+  (o.botones || [{ txt: 'Cerrar' }]).forEach(function (b) { foot.appendChild(boton(b, cerrar)); });
+  if (o.alAbrir) o.alAbrir(bg, cerrar);
+  return { bg: bg, cerrar: cerrar };
+}
+function boton(b, cerrar) {
+  var e = document.createElement('button'); e.className = 'btn' + (b.pri ? ' pri' : '') + (b.peligro ? ' peligro' : ''); e.textContent = b.txt;
+  e.onclick = function () { if (b.fn) b.fn(cerrar, e); else cerrar(); };
+  return e;
+}
+function leerForm(root) {
+  var o = {};
+  $$('[name]', root).forEach(function (i) { o[i.name] = i.type === 'checkbox' ? i.checked : i.value.trim(); });
+  return o;
+}
+function fmtF(s) { var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/); return m ? m[3] + '-' + m[2] + '-' + m[1] + (m[4] ? ' ' + m[4] : '') : (s === null || s === undefined ? '' : String(s)); }
+function badgeRol(r) {
+  var m = { ADMIN: ['Administrador', 'b-admin'], EDITOR: ['Usuario', 'b-editor'], LECTOR: ['Visualizador', 'b-lector'], NINGUNO: ['Sin acceso', 'b-ninguno'] }[r] || [r, 'b-lector'];
+  return '<span class="badge ' + m[1] + '">' + m[0] + '</span>';
+}
+function descargarBase64(b64, nombre, tipo) {
+  var bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  var url = URL.createObjectURL(new Blob([bytes], { type: tipo || 'application/octet-stream' }));
+  var a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+  return url;
+}
+function logosHtml(L) {
+  if (!L || (!L.izq && !L.der)) return '';
+  return '<span class="logos-top">' + (L.izq ? '<img src="' + L.izq + '" alt="msmin by SGS">' : '') + (L.der ? '<img src="' + L.der + '" alt="CODELCO">' : '') + '</span>';
+}
+</script>
+
+<script>
+var INI = null, TAB = null, TABLAS = null, EQS = null, US = null, INF = null, DT = null;
+var TAB_FILTRO = { tabla: '', equipo: '', buscar: '' };
+
+function iniciar() {
+  $('#bInicio').href = CINTAS.url;
+  Promise.all([api('inicioDatos'), api('datosTablas').catch(function () { return { tablas: [], equipos: [] }; })]).then(function (r) {
+    INI = r[0]; TABLAS = r[1];
+    $('#logos').innerHTML = logosHtml(INI.logos);
+    $('#sub').textContent = 'Área: ' + (INI.area || '—');
+    $('#chipUser').textContent = '👤 ' + (INI.sesion.email ? (INI.sesion.nombre || INI.sesion.email) : 'Sin sesión') + ' · ' +
+      ({ ADMIN: 'Administrador', EDITOR: 'Usuario', LECTOR: 'Visualizador', NINGUNO: 'Sin acceso' }[INI.sesion.rol] || INI.sesion.rol);
+    var tabs = [['informes', '📄 Informes']];
+    if (TABLAS.tablas.length) tabs.push(['datos', '✎ Datos']);
+    if (INI.sesion.rol === 'ADMIN') { tabs.push(['equipos', '🏭 Equipos']); tabs.push(['usuarios', '👥 Usuarios y permisos']); }
+    $('#tabs').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('');
+    $$('#tabs button').forEach(function (b) { b.onclick = function () { abrirTab(b.dataset.t); }; });
+    var pedida = (location.hash || '').replace('#', '');
+    abrirTab(tabs.some(function (t) { return t[0] === pedida; }) ? pedida : (INI.sesion.rol === 'ADMIN' ? 'equipos' : TABLAS.tablas.length && (INI.sesion.rol === 'EDITOR') ? 'datos' : 'informes'));
+  }, function (e) { $('#view').innerHTML = '<div class="vacio" style="color:#C00000">' + esc(e.message) + '</div>'; });
+}
+
+function abrirTab(t) {
+  TAB = t;
+  $$('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
+  $('#view').innerHTML = '<div class="vacio">Cargando…</div>';
+  if (t === 'informes') cargarInformes();
+  if (t === 'datos') pintarDatos();
+  if (t === 'equipos') cargarEquipos();
+  if (t === 'usuarios') cargarUsuarios();
+}
+
+/* =================================================================== INFORMES */
+function cargarInformes() {
+  api('informesListar').then(function (d) { INF = d; pintarInformes(); }, function (e) { $('#view').innerHTML = '<div class="vacio">' + esc(e.message) + '</div>'; });
+}
+function pintarInformes() {
+  var eqs = {};
+  ['espesores', 'flash', 'mapeo', 'inspeccion', 'checklist'].forEach(function (k) { (INF[k] || []).forEach(function (x) { if (x.equipo) eqs[x.equipo] = true; }); });
+  var f = TAB_FILTRO.equipo;
+  function ok(x) { return !f || x.equipo === f; }
+  var h = '<div class="toolbar"><span class="titulo">Informes</span><select id="fEqI"><option value="">Todos los equipos</option>' +
+    Object.keys(eqs).sort().map(function (e) { return '<option' + (e === f ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select></div>';
+  h += caja('📏 Medición de espesores', INF.espesores.filter(ok), ['Fecha', 'Equipo', 'Tramos', 'OT', ''], function (x, i) {
+    return [fmtF(x.fecha), x.equipo, x.tramos, x.ot, x.url ? '<button class="btn sm pri" data-url="' + esc(x.url) + '">⬇ PDF</button>' : '<span class="muted">sin PDF</span>'];
+  });
+  h += caja('⚡ Reporte Flash', INF.flash.filter(ok), ['Fecha evento', 'Equipo', 'Título', 'Pérdida (KTon)', ''], function (x) {
+    return [fmtF(x.fecha), x.equipo, x.titulo, x.perdida, x.url ? '<button class="btn sm pri" data-url="' + esc(x.url) + '">⬇ PDF</button>' : '<span class="muted">sin PDF</span>'];
+  });
+  h += caja('🗺️ Mapeo de Cintas (se genera al momento)', INF.mapeo.filter(ok), ['Cinta', 'Equipo', ''], function (x) {
+    return [x.codigo, x.equipo, '<button class="btn sm pri" data-map="' + esc(x.id) + '">⬇ PDF</button> <button class="btn sm" data-mapf="' + esc(x.id) + '">⬇ PDF con fotos</button>'];
+  });
+  h += caja('📋 Pautas de inspección (el PDF se descarga desde la app)', INF.inspeccion.filter(ok), ['Semana', 'Fecha', 'Equipo', 'OT', ''], function (x) {
+    return [x.semana, fmtF(x.fecha), x.equipo, x.ot, '<a class="btn sm" href="' + CINTAS.url + '?app=pauta" target="_top">Abrir Pauta</a>'];
+  });
+  var chk = (INF.checklist || []), chkErr = chk.length && chk[0].error ? chk[0].error : '';
+  h += chkErr ? '<div class="caja"><h2>✅ Checklist Cambio de Cintas</h2><div class="muted">No se pudo leer: ' + esc(chkErr) + '</div></div>'
+    : caja('✅ Checklist Cambio de Cintas (el PDF se genera al momento)', chk.filter(ok), ['Folio', 'Fecha', 'Equipo', 'Supervisor', 'Estado', ''], function (x) {
+      return [x.folio, fmtF(x.fecha), x.tag, x.inspector, x.verificada ? 'Verificada post' : 'Solo previa',
+        '<button class="btn sm pri" data-chk="' + esc(x.folio) + '" data-tipo="PRE">⬇ PDF Pre</button>' +
+        (x.verificada ? ' <button class="btn sm" data-chk="' + esc(x.folio) + '" data-tipo="POST">⬇ PDF Post</button>' : '')];
+    });
+  $('#view').innerHTML = h;
+  $$('[data-chk]').forEach(function (b) {
+    b.onclick = function () {
+      llamar('reimprimirPdfInspeccion', [b.dataset.chk, b.dataset.tipo], 'Generando PDF…').then(function (r) {
+        if (r && r.exito) descargarBase64(r.pdfBase64, r.nombreArchivo, 'application/pdf'); else toast((r && (r.mensaje || r.error)) || 'No se pudo generar el PDF', true);
+      });
+    };
+  });
+  $('#fEqI').onchange = function () { TAB_FILTRO.equipo = this.value; pintarInformes(); };
+  $$('[data-url]').forEach(function (b) {
+    b.onclick = function () { llamar('informesDescargar', [b.dataset.url], 'Descargando…').then(function (r) { descargarBase64(r.base64, r.nombre, r.tipo); }); };
+  });
+  $$('[data-map],[data-mapf]').forEach(function (b) {
+    b.onclick = function () {
+      var con = !!b.dataset.mapf;
+      llamar('informeMapeoPdf', [b.dataset.map || b.dataset.mapf, con], 'Generando PDF… (puede tardar)').then(function (r) { descargarBase64(r.base64, r.nombre, 'application/pdf'); });
+    };
+  });
+}
+function caja(titulo, lista, cab, fila) {
+  return '<div class="caja"><h2>' + titulo + ' <span class="muted" style="font-weight:400;font-size:13px">(' + lista.length + ')</span></h2>' +
+    (lista.length ? '<div class="scroll-x" style="max-height:420px;overflow:auto"><table class="t"><tr>' + cab.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr>' +
+      lista.map(function (x, i) { return '<tr>' + fila(x, i).map(function (v, j) { return '<td' + (j === cab.length - 1 ? ' class="acc"' : '') + '>' + (j === cab.length - 1 ? v : esc(v)) + '</td>'; }).join('') + '</tr>'; }).join('') +
+      '</table></div>' : '<div class="muted">Sin registros.</div>') + '</div>';
+}
+
+/* =================================================================== DATOS */
+function pintarDatos() {
+  var tbs = TABLAS.tablas;
+  if (!TAB_FILTRO.tabla || !tbs.some(function (t) { return t.id === TAB_FILTRO.tabla; })) TAB_FILTRO.tabla = tbs[0].id;
+  var h = '<div class="toolbar"><span class="titulo">Datos</span>' +
+    '<select id="fTabla">' + tbs.map(function (t) { return '<option value="' + t.id + '"' + (t.id === TAB_FILTRO.tabla ? ' selected' : '') + '>' + esc(t.titulo) + '</option>'; }).join('') + '</select>' +
+    '<select id="fEq"><option value="">Todos los equipos</option>' + TABLAS.equipos.map(function (e) { return '<option' + (e === TAB_FILTRO.equipo ? ' selected' : '') + '>' + esc(e) + '</option>'; }).join('') + '</select>' +
+    '<input id="fBus" type="search" placeholder="Buscar…" value="' + esc(TAB_FILTRO.buscar) + '" style="padding:7px 8px;border:1px solid var(--borde);border-radius:6px;min-width:180px">' +
+    '<button class="btn" id="bCargar">Buscar</button><span id="bAgregarSp"></span></div><div id="ayuda" class="hint" style="margin-bottom:8px"></div><div id="tablaDatos"></div>';
+  $('#view').innerHTML = h;
+  $('#fTabla').onchange = function () { TAB_FILTRO.tabla = this.value; cargarTabla(); };
+  $('#fEq').onchange = function () { TAB_FILTRO.equipo = this.value; cargarTabla(); };
+  $('#bCargar').onclick = function () { TAB_FILTRO.buscar = $('#fBus').value.trim(); cargarTabla(); };
+  $('#fBus').onkeydown = function (e) { if (e.key === 'Enter') $('#bCargar').click(); };
+  cargarTabla();
+}
+function cargarTabla() {
+  var info = TABLAS.tablas.filter(function (t) { return t.id === TAB_FILTRO.tabla; })[0];
+  $('#fEq').style.display = info.porEquipo ? '' : 'none';
+  $('#tablaDatos').innerHTML = '<div class="vacio">Cargando…</div>';
+  api('datosTabla', TAB_FILTRO.tabla, { equipo: info.porEquipo ? TAB_FILTRO.equipo : '', buscar: TAB_FILTRO.buscar }).then(function (d) {
+    DT = d;
+    $('#ayuda').textContent = (d.ayuda || '') + (d.editar ? '' : ' Su perfil es Visualizador en esta tabla (solo lectura).');
+    $('#bAgregarSp').innerHTML = d.agregar ? '<button class="btn pri" id="bAgregar">＋ Agregar</button>' : '';
+    if ($('#bAgregar')) $('#bAgregar').onclick = function () { modalFila(null); };
+    if (!d.filas.length) { $('#tablaDatos').innerHTML = '<div class="vacio">Sin registros con ese filtro.</div>'; return; }
+    var cols = d.resumen.filter(function (c) { return d.cab.indexOf(c) >= 0; });
+    $('#tablaDatos').innerHTML = '<div class="muted" style="margin-bottom:6px">' + d.filas.length + ' registro(s), los más recientes primero' + (d.filas.length >= 300 ? ' (se muestran 300; use el filtro)' : '') + '</div>' +
+      '<div class="scroll-x"><table class="t"><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '<th></th></tr>' +
+      d.filas.map(function (f, i) {
+        return '<tr>' + cols.map(function (c) { return '<td><div class="corto">' + esc(fmtF(f.v[c])) + '</div></td>'; }).join('') +
+          '<td class="acc"><button class="btn sm" data-ver="' + i + '">' + (d.editar ? '✎ Editar' : '👁 Ver') + '</button>' +
+          (d.editar ? ' <button class="btn sm peligro" data-del="' + i + '">🗑</button>' : '') + '</td></tr>';
+      }).join('') + '</table></div>';
+    $$('[data-ver]').forEach(function (b) { b.onclick = function () { modalFila(DT.filas[+b.dataset.ver]); }; });
+    $$('[data-del]').forEach(function (b) { b.onclick = function () { eliminarFila(DT.filas[+b.dataset.del]); }; });
+  }, function (e) { $('#tablaDatos').innerHTML = '<div class="vacio" style="color:#C00000">' + esc(e.message) + '</div>'; });
+}
+function campo(c, tipo, valor, soloLectura) {
+  var v = valor === null || valor === undefined ? '' : String(valor), ro = soloLectura ? ' readonly' : '';
+  var largo = v.length > 70 || /\n/.test(v);
+  var lab = '<label title="' + esc(c) + '">' + esc(c) + (soloLectura ? ' 🔒' : '') + '</label>';
+  if (largo) return '<div class="c4">' + lab + '<textarea name="' + esc(c) + '" rows="' + Math.min(8, 2 + Math.floor(v.length / 120)) + '"' + ro + '>' + esc(v) + '</textarea></div>';
+  if (tipo === 'fecha') return '<div>' + lab + '<input name="' + esc(c) + '" type="date" value="' + esc(v.substring(0, 10)) + '"' + ro + '></div>';
+  if (tipo === 'fechahora') return '<div>' + lab + '<input name="' + esc(c) + '" type="datetime-local" value="' + esc(v.length === 10 ? v + 'T00:00' : v) + '"' + ro + '></div>';
+  return '<div>' + lab + '<input name="' + esc(c) + '" value="' + esc(v) + '"' + (tipo === 'numero' ? ' inputmode="decimal"' : '') + ro + '></div>';
+}
+function modalFila(f) {
+  var d = DT, nuevo = !f, ed = d.editar;
+  var cuerpo = '<div class="form">' + d.cab.map(function (c, j) {
+    var fija = !nuevo && d.fijas.indexOf(c) >= 0;
+    return campo(c, d.tipos[j], f ? f.v[c] : '', fija || !ed);
+  }).join('') + '</div>';
+  modal({ titulo: (nuevo ? 'Agregar · ' : (ed ? 'Editar · ' : 'Ver · ')) + esc(d.titulo), cuerpo: cuerpo,
+    izquierda: (!nuevo && ed) ? [{ txt: '🗑 Eliminar', peligro: true, fn: function (cerrar) { cerrar(); eliminarFila(f); } }] : [],
+    botones: ed ? [{ txt: 'Cancelar' }, { txt: nuevo ? 'Agregar' : 'Guardar cambios', pri: true, fn: function (cerrar, b) {
+      var o = leerForm(b.closest('.modal-bg'));
+      if (nuevo) {
+        llamar('datosAgregar', [d.nombre, o], 'Guardando…').then(function (r) { cerrar(); toast(r.mensaje); cargarTabla(); });
+        return;
+      }
+      var cambios = {};
+      Object.keys(o).forEach(function (c) {
+        var antes = f.v[c] === null || f.v[c] === undefined ? '' : String(f.v[c]);
+        var j = d.cab.indexOf(c), tipo = d.tipos[j];
+        var ahora = tipo === 'fechahora' && /T00:00$/.test(o[c]) && antes.length === 10 ? o[c].substring(0, 10) : o[c];
+        if (ahora !== antes && d.fijas.indexOf(c) < 0) cambios[c] = ahora;
+      });
+      if (!Object.keys(cambios).length) { toast('No hay cambios'); return; }
+      llamar('datosGuardar', [d.nombre, f._fila, f._firma, cambios], 'Guardando y recalculando…').then(function (r) { cerrar(); toast(r.mensaje); cargarTabla(); });
+    } }] : [{ txt: 'Cerrar', pri: true }] });
+}
+function eliminarFila(f) {
+  var clave = ['ID_MUESTREO', 'ID_CINTA', 'ID_INFORME', 'ID REPORTE', 'EMAIL', 'AREA', 'CLAVE'].map(function (k) { return f.v[k]; }).filter(Boolean)[0] || ('fila ' + f._fila);
+  if (!confirm('¿Eliminar el registro ' + clave + ' de "' + DT.titulo + '"?\n\nQuedará una copia en la hoja LOG.' +
+      (DT.nombre === 'ESP_MUESTREOS' ? '\nSi solo quiere descartarlo de los cálculos, mejor edítelo y ponga VALIDO = NO.' : ''))) return;
+  llamar('datosEliminar', [DT.nombre, f._fila, f._firma], 'Eliminando y recalculando…').then(function (r) { toast(r.mensaje); cargarTabla(); });
+}
+
+/* =================================================================== EQUIPOS */
+function cargarEquipos() {
+  api('adminEquipos').then(function (d) { EQS = d; pintarEquipos(); }, function (e) { $('#view').innerHTML = '<div class="vacio">' + esc(e.message) + '</div>'; });
+}
+function pintarEquipos() {
+  var d = EQS;
+  var h = '<div class="toolbar"><span class="titulo">Equipos</span><button class="btn pri" id="bNuevoEq">＋ Nuevo equipo</button>' +
+    '<span class="muted">Catálogo único: lo usan las 5 apps. Desactivar oculta el equipo sin borrar su historial.</span></div>' +
+    '<div class="scroll-x"><table class="t"><tr><th>Equipo</th><th>TAG</th><th>Área</th><th>Sector</th><th>Ubicación técnica</th><th>Paralelo</th><th>Pérdida KTon/h</th><th>Cintas (espesores)</th><th>Mapeo</th><th>Activo</th><th></th></tr>' +
+    d.equipos.map(function (e, i) {
+      var act = e.ACTIVO !== 'NO';
+      return '<tr class="' + (act ? '' : 'inactivo') + '"><td><b>' + esc(e.ID_EQUIPO) + '</b><br><small class="muted">' + esc(e.NOMBRE) + '</small></td><td>' + esc(e.TAG) + '</td><td>' + esc(e.AREA) +
+        '</td><td>' + esc(e.SECTOR) + '</td><td>' + esc(e.UBICACION_TECNICA) + '</td><td>' + esc(e.EQUIPOS_EN_PARALELO) + '</td><td>' + esc(e.PERDIDA_KTON_HORA) +
+        '</td><td>' + e._cintas.length + '</td><td>' + (e._mapeo ? '✔' : '—') + '</td><td>' + (act ? 'SI' : 'NO') + '</td>' +
+        '<td class="acc"><button class="btn sm" data-ed="' + i + '">✎ Editar</button> <button class="btn sm ' + (act ? 'peligro' : '') + '" data-act="' + i + '">' + (act ? 'Desactivar' : 'Activar') + '</button></td></tr>';
+    }).join('') + '</table></div>';
+  $('#view').innerHTML = h;
+  $('#bNuevoEq').onclick = function () { modalEquipo(null); };
+  $$('[data-ed]').forEach(function (b) { b.onclick = function () { modalEquipo(EQS.equipos[+b.dataset.ed]); }; });
+  $$('[data-act]').forEach(function (b) {
+    b.onclick = function () {
+      var e = EQS.equipos[+b.dataset.act], activar = e.ACTIVO === 'NO';
+      if (!confirm((activar ? '¿Activar ' : '¿Desactivar ') + e.ID_EQUIPO + '?' + (activar ? '' : '\nDejará de aparecer en las apps; su historial se conserva.'))) return;
+      llamar('adminEquipoActivo', [e.ID_EQUIPO, activar], 'Guardando…').then(function () { toast('Listo'); cargarEquipos(); });
+    };
+  });
+}
+function modalEquipo(e) {
+  var d = EQS, nuevo = !e; e = e || { AREA: INI.area, ACTIVO: 'SI', MULTI_TRAMO: 'NO', N_TRAMOS: 1, EQUIPOS_EN_PARALELO: 1 };
+  var inp = function (k, lab, extra, cls) { return '<div class="' + (cls || '') + '"><label>' + lab + '</label><input name="' + k + '" value="' + esc(e[k]) + '"' + (extra || '') + '></div>'; };
+  var sel = function (k, lab, ops) { return '<div><label>' + lab + '</label><select name="' + k + '">' + ops.map(function (o) { return '<option' + (String(e[k]) === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>'; };
+  var plantilla = nuevo ? (d.equipos.filter(function (x) { return x._plan; })[0] || {})._plan : e._plan;
+  var plan = d.cabPlan.map(function (c, j) {
+    var v = plantilla ? plantilla[j] : '';
+    return '<div class="' + (String(v).length > 40 ? 'c2' : '') + '"><label title="' + esc(c) + '">' + esc(c) + '</label><input name="plan::' + esc(c) + '" value="' + esc(v) + '"></div>';
+  }).join('');
+  var cuerpo = '<div class="form">' +
+    '<fieldset><legend>Identificación</legend><div class="sub">' +
+      inp('ID_EQUIPO', 'ID equipo (ej: 110FE07)', nuevo ? ' required' : ' readonly') + inp('TAG', 'TAG (ej: CT-110-FE-07)', ' placeholder="automático"') +
+      inp('NOMBRE', 'Nombre', ' placeholder="= ID si se deja vacío"') + sel('TIPO', 'Tipo', ['FE', 'CV', 'OTRO']) +
+      '<div><label>Área</label><select name="AREA">' + d.areas.map(function (a) { return '<option' + (a.AREA === e.AREA ? ' selected' : '') + '>' + esc(a.AREA) + '</option>'; }).join('') + '</select></div>' +
+      inp('SECTOR', 'Sector (ej: 110)', ' inputmode="numeric"') + inp('UBICACION_TECNICA', 'Ubicación técnica (SAP)', '', 'c2') +
+      inp('DIVISION', 'División', ' placeholder="la del área"') + inp('GERENCIA', 'Gerencia / superintendencia', ' placeholder="la del área"', 'c2') + inp('AREA_PROCESO', 'Área / proceso', ' placeholder="la del área"') +
+    '</div></fieldset>' +
+    '<fieldset><legend>Operación</legend><div class="sub">' +
+      inp('EQUIPOS_EN_PARALELO', 'Equipos en paralelo', ' inputmode="numeric"') + sel('MULTI_TRAMO', 'Multi tramo', ['NO', 'SI']) + inp('N_TRAMOS', 'N° tramos', ' inputmode="numeric"') +
+      inp('ORDEN', 'Orden en listas', ' inputmode="numeric" placeholder="al final"') + sel('ACTIVO', 'Activo', ['SI', 'NO']) + inp('OBS', 'Observación', '', 'c2') +
+      '<div class="c4 hint">Pérdida en Reporte Flash = tonelaje del área (hoja AREAS) ÷ equipos en paralelo ÷ 1000 KTon por hora de detención.</div>' +
+    '</div></fieldset>' +
+    '<fieldset><legend>Plan de mantenimiento (Pauta de Inspección)' + (nuevo ? ' — copiado de otro equipo, ajústelo' : '') + '</legend><div class="sub">' + plan + '</div></fieldset>' +
+    '<fieldset><legend>Medición de espesores: ' + (e._cintas && e._cintas.length ? 'cintas vigentes' : 'sin cinta registrada') + '</legend>' +
+      (e._cintas && e._cintas.length ? '<div class="hint" style="margin-bottom:8px">' + e._cintas.map(esc).join('<br>') + '<br>Para reemplazar una cinta use “Cambio de cinta” en la app de Espesores.</div>' : '') +
+      '<label style="text-transform:none;font-weight:400"><input type="checkbox" id="chkCinta" style="width:auto"> Registrar ' + (e._cintas && e._cintas.length ? 'otro tramo' : 'la cinta instalada') + ' (para que aparezca en Medición de espesores)</label>' +
+      '<div class="sub" id="cintaCampos" style="display:none;margin-top:8px">' +
+        ['tramo|Tramo (ÚNICO, TRAMO 01…)|ÚNICO', 'espec|Especificación (ej: EP2500/5)|', 'fabricante|Fabricante|', 'grado|Grado cubierta|', 'fechaCambio|Fecha de instalación|',
+         'espTotal|Espesor total (mm)|', 'espCarga|Espesor carga (mm)|', 'espRet|Espesor retorno (mm)|', 'cables|Cables o telas|', 'ancho|Ancho (mm)|',
+         'vidaUtil|Vida útil (días)|', 'segCarga|Espesor seguridad carga (mm)|', 'segRet|Espesor seguridad retorno (mm)|'].map(function (x) {
+          var p = x.split('|');
+          return '<div><label>' + p[1] + '</label><input name="cinta::' + p[0] + '" value="' + esc(p[2]) + '"' + (p[0] === 'fechaCambio' ? ' type="date"' : (/^(esp|seg|cables|ancho|vida)/.test(p[0]) ? ' inputmode="decimal"' : '')) + '></div>';
+        }).join('') +
+      '</div></fieldset>' +
+    (nuevo ? '<div class="c4 hint">Para que aparezca en Mapeo de Cintas, créelo después allí con “＋ Nueva cinta” usando el mismo código.</div>' : '') +
+    '</div>';
+  modal({ titulo: nuevo ? 'Nuevo equipo' : 'Equipo ' + esc(e.ID_EQUIPO), cuerpo: cuerpo,
+    alAbrir: function (bg) { $('#chkCinta', bg).onchange = function () { $('#cintaCampos', bg).style.display = this.checked ? '' : 'none'; }; },
+    botones: [{ txt: 'Cancelar' }, { txt: 'Guardar', pri: true, fn: function (cerrar, b) {
+      var bg = b.closest('.modal-bg'), o = leerForm(bg), datos = { _nuevo: nuevo, _plan: {}, _cinta: null }, cinta = {};
+      Object.keys(o).forEach(function (k) {
+        if (k.indexOf('plan::') === 0) datos._plan[k.substring(6)] = o[k];
+        else if (k.indexOf('cinta::') === 0) cinta[k.substring(7)] = o[k];
+        else datos[k] = o[k];
+      });
+      if (!datos.ID_EQUIPO) { toast('Ingrese el ID del equipo', true); return; }
+      if ($('#chkCinta', bg).checked) {
+        if (!cinta.fechaCambio || !cinta.espCarga || !cinta.espRet || !cinta.segCarga || !cinta.segRet || !cinta.ancho || !cinta.vidaUtil) { toast('Complete la fecha, espesores, seguridad, ancho y vida útil de la cinta', true); return; }
+        datos._cinta = cinta;
+      }
+      llamar('adminEquipoGuardar', [datos], 'Guardando…').then(function (r) { cerrar(); toast(r.mensaje); cargarEquipos(); });
+    } }] });
+}
+
+/* =================================================================== USUARIOS */
+function cargarUsuarios() {
+  api('adminUsuarios').then(function (d) { US = d; pintarUsuarios(); }, function (e) { $('#view').innerHTML = '<div class="vacio">' + esc(e.message) + '</div>'; });
+}
+function nombresModulos(s) {
+  if (!s || s === '*') return 'Todas';
+  return s.split(/\s*[,;]\s*/).map(function (id) { var m = US.modulos.filter(function (x) { return x.id === id; })[0]; return m ? m.nombre : id; }).join(', ');
+}
+function textoSolicitud(s) {
+  return { CORREO_PENDIENTE: '<span class="badge b-lector">Pide Usuario · falta confirmar correo</span>', APROBACION_PENDIENTE: '<span class="badge b-no">Pide Usuario · por aprobar</span>',
+           APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' }[s] || '';
+}
+function cajaSolicitudes() {
+  var p = US.usuarios.filter(function (u) { return u.SOLICITUD === 'APROBACION_PENDIENTE' || u.SOLICITUD === 'CORREO_PENDIENTE'; });
+  if (!p.length) return '';
+  return '<div class="caja" style="border-left:5px solid #FFC000"><h2>Solicitudes de perfil Usuario (' + p.length + ')</h2>' + p.map(function (u) {
+    return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-top:1px solid #eee"><div style="flex:1;min-width:220px"><b>' + esc(u.NOMBRE) + '</b> · ' + esc(u.EMAIL) +
+      '<br><small class="muted">' + esc([u.EMPRESA, u.CARGO].filter(Boolean).join(' · ')) + (u.SOLICITADO ? ' · pedido el ' + esc(fmtF(u.SOLICITADO)) : '') + '</small><br>' + textoSolicitud(u.SOLICITUD) + '</div>' +
+      '<button class="btn sm pri" data-sol="' + esc(u.EMAIL) + '" data-ok="1">✔ Aprobar</button><button class="btn sm peligro" data-sol="' + esc(u.EMAIL) + '" data-ok="0">✖ Rechazar</button></div>';
+  }).join('') + '<div class="hint">Puede aprobar aunque la persona aún no confirme su correo, si la conoce.</div></div>';
+}
+function pintarUsuarios() {
+  var h = '<div class="toolbar"><span class="titulo">Usuarios y permisos</span><button class="btn pri" id="bNuevoU">＋ Nuevo usuario</button></div>' +
+    '<div class="caja hint" style="font-size:13px"><b>Administrador</b> (solo los correos de CONFIG · ADMINISTRADORES): todo, incluidos equipos y usuarios. · <b>Usuario</b>: registra, edita y elimina datos en las apps autorizadas. · ' +
+    '<b>Visualizador</b>: solo ve y descarga informes. · Las personas también pueden crear su cuenta desde la app: los Visualizadores entran al tiro; ' +
+    'los Usuarios confirman su correo y quedan esperando su aprobación (aquí abajo o con el botón del correo).</div>' + cajaSolicitudes() +
+    '<div class="scroll-x"><table class="t"><tr><th>Correo</th><th>Nombre</th><th>Permiso</th><th>Apps</th><th>Áreas</th><th>PIN</th><th>Activo</th><th>Solicitud</th><th></th></tr>' +
+    US.usuarios.map(function (u, i) {
+      return '<tr class="' + (u.ACTIVO === 'NO' ? 'inactivo' : '') + '"><td>' + esc(u.EMAIL) + '</td><td>' + esc(u.NOMBRE) + '</td><td>' + badgeRol(u.ROL) + '</td><td>' + esc(nombresModulos(u.MODULOS)) +
+        '</td><td>' + esc(u.AREAS === '*' ? 'Todas' : u.AREAS) + '</td><td>' + (u.tienePin ? '✔' : '<span class="badge b-no">sin PIN</span>') + '</td><td>' + u.ACTIVO + '</td><td>' + textoSolicitud(u.SOLICITUD) + '</td>' +
+        '<td class="acc"><button class="btn sm" data-ed="' + i + '">✎ Editar</button>' + (u.EMAIL !== US.yo ? ' <button class="btn sm peligro" data-del="' + i + '">🗑</button>' : '') + '</td></tr>';
+    }).join('') + '</table></div>';
+  $('#view').innerHTML = h;
+  $('#bNuevoU').onclick = function () { modalUsuario(null); };
+  $$('[data-sol]').forEach(function (b) {
+    b.onclick = function () {
+      var apr = b.dataset.ok === '1';
+      if (!confirm((apr ? '¿Aprobar' : '¿Rechazar') + ' a ' + b.dataset.sol + ' como Usuario?')) return;
+      llamar('adminSolicitudResolver', [b.dataset.sol, apr], 'Guardando…').then(function () { toast(apr ? 'Aprobado: se le avisó por correo' : 'Rechazado: se le avisó por correo'); cargarUsuarios(); });
+    };
+  });
+  $$('[data-ed]').forEach(function (b) { b.onclick = function () { modalUsuario(US.usuarios[+b.dataset.ed]); }; });
+  $$('[data-del]').forEach(function (b) {
+    b.onclick = function () {
+      var u = US.usuarios[+b.dataset.del];
+      if (!confirm('¿Eliminar el acceso de ' + u.EMAIL + '?\n(Para suspenderlo temporalmente, mejor márquelo como inactivo.)')) return;
+      llamar('adminUsuarioEliminar', [u.EMAIL], 'Eliminando…').then(function () { toast('Usuario eliminado'); cargarUsuarios(); });
+    };
+  });
+}
+function modalUsuario(u) {
+  var nuevo = !u; u = u || { ROL: 'EDITOR', MODULOS: '*', AREAS: '*', ACTIVO: 'SI' };
+  var mods = u.MODULOS === '*' ? null : u.MODULOS.split(/\s*[,;]\s*/), areas = u.AREAS === '*' ? null : u.AREAS.split(/\s*[,;]\s*/);
+  var chk = function (grupo, val, marcado) { return '<label style="text-transform:none;font-weight:400;display:inline-flex;gap:4px;margin:0 12px 6px 0"><input type="checkbox" data-g="' + grupo + '" value="' + esc(val.id || val) + '"' + (marcado ? ' checked' : '') + ' style="width:auto">' + esc(val.nombre || val) + '</label>'; };
+  var cuerpo = '<div class="form">' +
+    '<div class="c2"><label>Correo</label><input name="EMAIL" type="email" value="' + esc(u.EMAIL) + '"></div>' +
+    '<div class="c2"><label>Nombre</label><input name="NOMBRE" value="' + esc(u.NOMBRE) + '"></div>' +
+    '<div class="c2"><label>Permiso</label><select name="ROL">' + [['EDITOR', 'Usuario — registra, edita y elimina'], ['LECTOR', 'Visualizador — solo ve y descarga informes'], ['ADMIN', 'Administrador — todo, incluidos usuarios']].map(function (r) {
+      return '<option value="' + r[0] + '"' + (u.ROL === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('') + '</select></div>' +
+    '<div><label>Activo</label><select name="ACTIVO"><option' + (u.ACTIVO !== 'NO' ? ' selected' : '') + '>SI</option><option' + (u.ACTIVO === 'NO' ? ' selected' : '') + '>NO</option></select></div>' +
+    '<div><label>PIN ' + (nuevo ? '' : '(vacío = mantener)') + '</label><input name="PIN" type="text" autocomplete="off" placeholder="' + (u.tienePin ? '••••' : '4 a 20 caracteres') + '"></div>' +
+    '<fieldset><legend>Apps donde puede editar</legend>' + chk('modT', { id: '*', nombre: 'Todas' }, !mods) +
+      '<div id="modsLista" style="' + (mods ? '' : 'display:none') + '">' + US.modulos.map(function (m) { return chk('mod', m, mods && mods.indexOf(m.id) >= 0); }).join('') + '</div>' +
+      '<div class="hint">En las apps no marcadas será Visualizador (solo lectura).</div></fieldset>' +
+    '<fieldset><legend>Áreas</legend>' + chk('arT', 'Todas', !areas) +
+      '<div id="arLista" style="' + (areas ? '' : 'display:none') + '">' + US.areas.map(function (a) { return chk('ar', a, areas && areas.indexOf(a) >= 0); }).join('') + '</div></fieldset>' +
+    '</div>';
+  modal({ titulo: nuevo ? 'Nuevo usuario' : 'Usuario ' + esc(u.EMAIL), cuerpo: cuerpo,
+    alAbrir: function (bg) {
+      $('[data-g="modT"]', bg).onchange = function () { $('#modsLista', bg).style.display = this.checked ? 'none' : ''; };
+      $('[data-g="arT"]', bg).onchange = function () { $('#arLista', bg).style.display = this.checked ? 'none' : ''; };
+    },
+    botones: [{ txt: 'Cancelar' }, { txt: 'Guardar', pri: true, fn: function (cerrar, b) {
+      var bg = b.closest('.modal-bg'), o = leerForm(bg);
+      o.MODULOS = $('[data-g="modT"]', bg).checked ? '*' : $$('[data-g="mod"]:checked', bg).map(function (x) { return x.value; }).join(', ');
+      o.AREAS = $('[data-g="arT"]', bg).checked ? '*' : $$('[data-g="ar"]:checked', bg).map(function (x) { return x.value; }).join(', ');
+      if (nuevo && !o.PIN) { if (!confirm('No asignó PIN: el usuario no podrá iniciar sesión hasta que le asigne uno. ¿Continuar?')) return; }
+      o._original = nuevo ? '' : u.EMAIL;
+      llamar('adminUsuarioGuardar', [o], 'Guardando…').then(function () { cerrar(); toast('Usuario guardado' + (o.PIN ? '. Entréguele su PIN.' : '')); cargarUsuarios(); });
+    } }] });
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+</script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () { }); });
+    }
+  </script>
+</body>
+</html>
