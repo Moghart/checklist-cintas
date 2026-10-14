@@ -3,7 +3,7 @@
  * Guarda la app en el celular para que abra aunque no haya señal.
  * Al publicar cambios en index.html, sube el número de VERSION para forzar la actualización.
  */
-const VERSION = 'inspeccion-cintas-v9';
+const VERSION = 'inspeccion-cintas-v10';
 const ARCHIVOS = [
   './',
   './index.html',
@@ -51,7 +51,8 @@ self.addEventListener('fetch', (e) => {
   const desdeCache = () =>
     caches.match(e.request, { ignoreSearch: true }).then((r) => r || caches.match('./index.html'));
 
-  const desdeRed = fetch(e.request).then((r) => {
+  // no-cache: siempre pregunta a GitHub si hay versión nueva (sin quedarse con la copia vieja del navegador).
+  const desdeRed = fetch(e.request, { cache: 'no-cache' }).then((r) => {
     if (r && r.ok) {
       const copia = r.clone();
       caches.open(VERSION).then((c) => c.put(e.request, copia));

@@ -107,7 +107,10 @@ html[data-app="espesores"] {
   --azul: #1F4E8C; --azul-osc: #14365F; --azul-suave: #EAF1FB; --naranja: #E35205; --naranja-suave: #FDEBDD;
   --fondo: #F2F4F7; --linea: #DDE2EA; --texto: #14213D; --tenue: #5A6478; --radio: 12px;
 }
-html[data-app="espesores"] .cab { display: none !important; }
+html[data-app="espesores"] .cab { position: static; background: transparent; border: 0; }
+html[data-app="espesores"] .cab img, html[data-app="espesores"] .cab h1 { display: none !important; }
+html[data-app="espesores"] .cab-in { justify-content: flex-end; padding: 10px 16px 6px; }
+html[data-app="espesores"] .estado { min-height: 34px; padding: 0 12px; }
 html[data-app="espesores"] nav { background: var(--ic-fondo); border-bottom: 1px solid var(--ic-linea); position: sticky; top: 0; z-index: 19; }
 html[data-app="espesores"] nav .in { max-width: 1120px; }
 html[data-app="espesores"] nav button { color: var(--ic-tenue); min-height: 48px; font-size: 14px; }

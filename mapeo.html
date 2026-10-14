@@ -918,6 +918,11 @@ function visor(src){
     window.PUENTE_DESPUES_SYNC = function () {
       try { if (typeof S !== "undefined" && S.data) refrescar(); else if (typeof recargarInit === "function") recargarInit().then(function () { if (typeof renderInicio === "function") renderInicio(); }); } catch (e) { }
     };
+    // Llegaron datos más nuevos que la copia del teléfono: se vuelve a pintar (sin tocar lo que se está editando).
+    window.PUENTE_DATOS_NUEVOS = function (fn) {
+      if (document.querySelector(".modal-bg")) return;
+      if (fn === "apiInit" || fn === "apiGetCinta") window.PUENTE_DESPUES_SYNC();
+    };
   </script>
   <script>
     if ("serviceWorker" in navigator) {

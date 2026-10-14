@@ -68,6 +68,14 @@
     e.red = true; return e;
   }
 
+  /* Lecturas rápidas: la PRIMERA vez que una pantalla pide estos datos se muestran al instante desde la
+     copia del teléfono y, en paralelo, se piden al servidor; si llegaron cambios, la pantalla se actualiza sola
+     (PUENTE_DATOS_NUEVOS). Las lecturas siguientes y las que vienen justo después de guardar van al servidor. */
+  var RAPIDAS = ['apiInit', 'apiGetCinta', 'inicioDatos', 'sesionEstado', 'adminEquipos', 'apiCatalogo', 'getInitialData', 'obtenerDatosIniciales'];
+  var yaLeidas = {}, frescos = {}, MARGEN_ESCRITURA_MS = 120000;
+  function ultimaEscritura() { try { return +localStorage.getItem('ic_ult_escritura') || 0; } catch (e) { return 0; } }
+  function marcarEscritura() { try { localStorage.setItem('ic_ult_escritura', String(Date.now())); } catch (e) { } }
+
   function leer(fn, args) {
     var k = clave(fn, args), usarCache = (CFG.sinCache || []).indexOf(fn) < 0;
     var desdeCache = function (err) {
@@ -79,17 +87,35 @@
       }).then(function (v) { marcarSinSenal(true); return v; });
     };
     if (!navigator.onLine) return desdeCache(sinSenal(fn));
-    return conLimite(SESION_APP.llamar(fn, args), ESPERA_LECTURA_MS).then(function (v) {
-      if (usarCache) cacheGuardar(k, v);
-      marcarSinSenal(false);
-      return v;
-    }, function (e) { if (esErrorDeRed(e)) return desdeCache(e); throw e; });
+    var desdeRed = function () {
+      return conLimite(SESION_APP.llamar(fn, args), ESPERA_LECTURA_MS).then(function (v) {
+        if (usarCache) cacheGuardar(k, v);
+        marcarSinSenal(false);
+        return v;
+      });
+    };
+    if (frescos[k] && Date.now() - frescos[k].t < 10000) { var fr = frescos[k].v; delete frescos[k]; return Promise.resolve(fr); }   // recién llegado en segundo plano
+    var primera = !yaLeidas[k]; yaLeidas[k] = true;
+    if (usarCache && primera && RAPIDAS.indexOf(fn) >= 0 && Date.now() - ultimaEscritura() > MARGEN_ESCRITURA_MS) {
+      return cacheLeer(k).then(function (c) {
+        if (!c) return desdeRed().catch(function (e) { if (esErrorDeRed(e)) return desdeCache(e); throw e; });
+        desdeRed().then(function (v) {
+          if (JSON.stringify(v) !== JSON.stringify(c.v) && typeof window.PUENTE_DATOS_NUEVOS === 'function') {
+            frescos[k] = { v: v, t: Date.now() };
+            try { window.PUENTE_DATOS_NUEVOS(fn, v); } catch (e) { }
+          }
+        }, function () { });
+        return c.v;
+      });
+    }
+    return desdeRed().catch(function (e) { if (esErrorDeRed(e)) return desdeCache(e); throw e; });
   }
 
   function escribir(fn, args) {
     var enCola = CFG.colaEscritura && OPTIMISTA[fn];
-    if (!navigator.onLine) return enCola ? encolar(fn, args) : Promise.reject(sinSenalEscritura());
-    return SESION_APP.llamar(fn, args).then(function (v) { marcarSinSenal(false); return v; }, function (e) {
+    if (!navigator.onLine) { if (enCola) marcarEscritura(); return enCola ? encolar(fn, args) : Promise.reject(sinSenalEscritura()); }
+    marcarEscritura();
+    return SESION_APP.llamar(fn, args).then(function (v) { marcarSinSenal(false); marcarEscritura(); return v; }, function (e) {
       if (enCola && esErrorDeRed(e)) return encolar(fn, args);     // no llegó al servidor: queda en la bandeja
       if (esErrorDeRed(e)) throw sinSenalEscritura();
       throw e;
