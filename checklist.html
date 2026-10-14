@@ -136,7 +136,7 @@
       .logo-msmin, .logo-codelco { height: 32px; }
       .brand-titulo span { font-size: 11.5px; letter-spacing: 0; }
       .brand-titulo small { display: none; }
-      .tabs-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .tabs-nav { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
       .tab-btn { padding: 9px 6px; font-size: 12px; }
     }
     @media(max-width: 360px) {
@@ -171,8 +171,7 @@
     <div class="tabs-nav">
       <button type="button" class="tab-btn active" onclick="cambiarPestana('pre')">📋 1. Pre-Mantenimiento</button>
       <button type="button" class="tab-btn" onclick="cambiarPestana('post')">🔍 2. Verificación Post</button>
-      <button type="button" class="tab-btn" onclick="cambiarPestana('catalogo')">⚙️️ 3. Catálogo Equipos</button>
-      <button type="button" class="tab-btn" onclick="cambiarPestana('historico')">📂 4. Descargar Informes</button>
+      <button type="button" class="tab-btn" onclick="cambiarPestana('historico')">📂 3. Descargar Informes</button>
     </div>
 
     <!-- PESTAÑA 1: PRE-MANTENIMIENTO -->
@@ -323,97 +322,7 @@
       </div>
     </div>
 
-    <!-- PESTAÑA 3: CATÁLOGO DE EQUIPOS Y CINTAS (TAG Y ÁREA NO EDITABLES + LARGO CARRO TENSOR) -->
-    <div id="tab_catalogo" class="tab-content">
-      <div class="header" style="background:#1e3a8a;">
-        <h2 style="font-size: 16px;">CATÁLOGO DE EQUIPOS Y CINTAS TRANSPORTADORAS</h2>
-        <p style="font-size: 12px; opacity: 0.9;">Ficha técnica desde el Catálogo de equipos (solo lectura)</p>
-      </div>
-
-      <div class="card" style="border: 2px solid #bfdbfe; background: #eff6ff;">
-        <div class="form-grid">
-          <div class="form-group">
-            <label style="color:#1e40af;">Seleccionar TAG de Equipo (No Editable):</label>
-            <select id="cat_sel_tag" onchange="alSeleccionarTagCat()" style="font-weight:bold;">
-              <option value="">-- Seleccione un TAG existente --</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label style="color:#1e40af;">Área / Planta (No Editable):</label>
-            <input type="text" id="cat_area" readonly style="background:#f1f5f9; cursor:not-allowed; font-weight:600; color:#475569;">
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-bottom: 8px; font-size: 13px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">Especificaciones Técnicas del Equipo y Cinta</h3>
-        
-        <div class="form-grid-3">
-          <div class="form-group">
-            <label>Tipo de Cinta:</label>
-            <input type="text" id="cat_tipoCinta" readonly placeholder="Ej: Cable de Acero ST-1600">
-          </div>
-          <div class="form-group">
-            <label>N° Cables / Telas:</label>
-            <input type="text" id="cat_numCables" readonly placeholder="Ej: Cable Acero (60 cables)">
-          </div>
-          <div class="form-group">
-            <label>Grado de Cubierta:</label>
-            <input type="text" id="cat_gradoCubierta" readonly placeholder="Ej: Grado W">
-          </div>
-        </div>
-
-        <div class="form-grid-3">
-          <div class="form-group">
-            <label>Espesor Cubierta Carga:</label>
-            <input type="text" id="cat_espCarga" readonly placeholder="Ej: 15 mm">
-          </div>
-          <div class="form-group">
-            <label>Espesor Cubierta Retorno:</label>
-            <input type="text" id="cat_espRetorno" readonly placeholder="Ej: 6 mm">
-          </div>
-          <div class="form-group">
-            <label>Espesor Total:</label>
-            <input type="text" id="cat_espTotal" readonly placeholder="Ej: 23 mm">
-          </div>
-        </div>
-
-        <div class="form-grid-3">
-          <div class="form-group">
-            <label>Fabricante:</label>
-            <input type="text" id="cat_fabricante" readonly placeholder="Ej: Conveyor Belt">
-          </div>
-          <div class="form-group">
-            <label>Marca:</label>
-            <input type="text" id="cat_marca" readonly placeholder="Ej: Conveyor Belt">
-          </div>
-          <div class="form-group">
-            <label>Largo:</label>
-            <input type="text" id="cat_largo" readonly placeholder="Ej: 1192 m">
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Ancho:</label>
-            <input type="text" id="cat_ancho" readonly placeholder="Ej: 42&quot;">
-          </div>
-          <div class="form-group">
-            <label style="color:#0369a1; font-weight:700;">Largo carro tensor:</label>
-            <input type="text" id="cat_largoCarroTensor" readonly placeholder="Ej: 4.5 m o 4500 mm">
-          </div>
-        </div>
-
-        <div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#f1f5f9;color:#334155;font-size:13px;line-height:1.45">
-          Esta ficha viene del <b>Catálogo de equipos</b>, el mismo para todas las apps e informes. Se modifica en un solo lugar:
-          <b>Administración › Catálogo de equipos</b> (solo administradores).
-        </div>
-        <button type="button" class="btn-principal" style="background:#1d4ed8;" id="btnIrCatalogo" onclick="window.CINTAS &amp;&amp; CINTAS.ir('admin', 'equipos')">🏭 Abrir Catálogo de equipos</button>
-        <div id="statusBoxCat" class="status-box"></div>
-      </div>
-    </div>
-
-    <!-- PESTAÑA 4: DESCARGA DE INFORMES HISTÓRICOS -->
+    <!-- PESTAÑA 3: DESCARGA DE INFORMES HISTÓRICOS -->
     <div id="tab_historico" class="tab-content">
       <div class="header" style="background:#0f766e;">
         <h2 style="font-size: 16px;">DESCARGA DE INFORMES HISTÓRICOS</h2>
@@ -779,11 +688,8 @@
       } else if (p === 'post') {
         document.querySelectorAll('.tab-btn')[1].classList.add('active');
         document.getElementById('tab_post').classList.add('active');
-      } else if (p === 'catalogo') {
-        document.querySelectorAll('.tab-btn')[2].classList.add('active');
-        document.getElementById('tab_catalogo').classList.add('active');
       } else if (p === 'historico') {
-        document.querySelectorAll('.tab-btn')[3].classList.add('active');
+        document.querySelectorAll('.tab-btn')[2].classList.add('active');
         document.getElementById('tab_historico').classList.add('active');
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
