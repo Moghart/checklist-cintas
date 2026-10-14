@@ -364,7 +364,7 @@ function renderInicio(){
       <span class="muted">Peor estado:</span>
       <button class="pill ${!S.critFiltro?'on':''}" data-c="">Todas</button>
       ${crits.map(c=>`<button class="pill ${S.critFiltro===c?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}
-      ${puedeEditar()? '<button class="btn pri" id="btnNueva">＋ Nueva cinta</button>' : ''}
+      ${esAdmin()? '<button class="btn pri" id="btnNueva">＋ Nueva cinta</button>' : ''}
     </div>
     <div class="grid-cintas" id="gridCintas"></div>`;
   $('#buscar').oninput = e => { S.filtro=e.target.value; pintarCards(); };
@@ -420,8 +420,8 @@ function renderCinta(){
   <div class="toolbar no-print">
     <button class="btn" id="bVolver">← Cintas</button>
     <span class="titulo">${esc(c.CODIGO)}</span>
-    ${ed?`<button class="btn" id="bFicha">✎ Ficha técnica</button>
-    <button class="btn" id="bTramos">⇄ Tramos / cambios</button>
+    ${esAdmin()?`<button class="btn" id="bFicha">✎ Ficha técnica</button>`:''}
+    ${ed?`<button class="btn" id="bTramos">⇄ Tramos / cambios</button>
     <button class="btn pri" id="bNuevoH">＋ Nuevo hallazgo</button>`:''}
     <label class="pill ${S.mostrarCerrados?'on':''}" style="cursor:pointer"><input type="checkbox" id="chkCerr" ${S.mostrarCerrados?'checked':''} style="display:none">Mostrar cerrados</label>
     <span class="sp" style="flex:1"></span>
@@ -462,7 +462,7 @@ function renderCinta(){
         <tr><td class="lab" style="width:auto">Largo total (mt)</td><td class="val">${fmtN(total)}</td><td colspan="2" style="border:0"></td></tr>
       </table>
       <div>
-        ${imagen?`<img class="img-cinta" src="${imagen}" alt="Cinta">`:`<div class="img-vacia">Sin imagen de la cinta${ed?'<br><small>Use “Ficha técnica” para cargar una</small>':''}</div>`}
+        ${imagen?`<img class="img-cinta" src="${imagen}" alt="Cinta">`:`<div class="img-vacia">Sin imagen de la cinta${esAdmin()?'<br><small>Use “Ficha técnica” para cargar una</small>':''}</div>`}
       </div>
     </div>
   </div>
@@ -505,7 +505,8 @@ function renderCinta(){
   $('#bPrint').onclick = () => window.print();
   $('#bInforme').onclick = modalInforme;
   $('#chkCerr').onchange = e => { S.mostrarCerrados=e.target.checked; renderCinta(); };
-  if(ed){ $('#bFicha').onclick = () => modalFicha(c); $('#bTramos').onclick = modalTramos; $('#bNuevoH').onclick = () => modalHallazgo(null); }
+  if($('#bFicha')) $('#bFicha').onclick = () => modalFicha(c);
+  if(ed){ $('#bTramos').onclick = modalTramos; $('#bNuevoH').onclick = () => modalHallazgo(null); }
   $$('tr.dato').forEach(r => r.onclick = () => modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===r.dataset.id)));
   $$('[data-hid]').forEach(m => m.addEventListener('click', ev => { ev.stopPropagation(); modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===m.dataset.hid)); }));
 }

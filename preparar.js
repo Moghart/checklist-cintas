@@ -57,7 +57,8 @@
         if (typeof tag === 'string') { t.push(['obtenerEspesores', [tag]]); t.push(['obtenerMapeoCinta', [tag]]); }
       });
     }]);
-    if (d.sesion && d.sesion.rol === 'ADMIN') { t.push(['adminEquipos', []]); t.push(['adminUsuarios', []]); }
+    t.push(['adminEquipos', []]);                    // Catálogo de equipos: todos lo ven (también sin señal)
+    if (d.sesion && d.sesion.rol === 'ADMIN') t.push(['adminUsuarios', []]);
     t.push(['datosTablas', []]); t.push(['informesListar', []]);
     return t;
   }

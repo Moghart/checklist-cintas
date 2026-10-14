@@ -258,7 +258,7 @@
     token: SESION_APP.token, area: SESION_APP.area,
     guardarSesion: function () { }, cerrarSesion: function () { SESION_APP.cerrar(); },
     elegirArea: SESION_APP.elegirArea,
-    ir: function (app) { location.href = PAGINAS[app] || 'index.html'; }
+    ir: function (app, tab) { location.href = (PAGINAS[app] || 'index.html') + (tab ? '?tab=' + encodeURIComponent(tab) : ''); }
   };
   if (!SESION_APP.token() && !CFG.sinLogin) SESION_APP.irAlLogin(location.pathname.split('/').pop() + location.search);
 

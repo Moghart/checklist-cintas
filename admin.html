@@ -203,11 +203,16 @@ function iniciar() {
       ({ ADMIN: 'Administrador', EDITOR: 'Usuario', LECTOR: 'Visualizador', NINGUNO: 'Sin acceso' }[INI.sesion.rol] || INI.sesion.rol);
     var tabs = [['informes', '📄 Informes']];
     if (TABLAS.tablas.length) tabs.push(['datos', '✎ Datos']);
-    if (INI.sesion.rol === 'ADMIN') { tabs.push(['equipos', '🏭 Equipos']); tabs.push(['usuarios', '👥 Usuarios y permisos']); }
+    if (INI.sesion.rol !== 'NINGUNO') tabs.push(['equipos', '🏭 Catálogo de equipos']);
+    if (INI.sesion.rol === 'ADMIN') tabs.push(['usuarios', '👥 Usuarios y permisos']);
     $('#tabs').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('');
     $$('#tabs button').forEach(function (b) { b.onclick = function () { abrirTab(b.dataset.t); }; });
-    var pedida = (location.hash || '').replace('#', '');
-    abrirTab(tabs.some(function (t) { return t[0] === pedida; }) ? pedida : (INI.sesion.rol === 'ADMIN' ? 'equipos' : TABLAS.tablas.length && (INI.sesion.rol === 'EDITOR') ? 'datos' : 'informes'));
+    var elegir = function (pedida) {
+      abrirTab(tabs.some(function (t) { return t[0] === pedida; }) ? pedida : (INI.sesion.rol === 'ADMIN' ? 'equipos' : TABLAS.tablas.length && (INI.sesion.rol === 'EDITOR') ? 'datos' : 'informes'));
+    };
+    var hash = (location.hash || '').replace('#', '');
+    try { google.script.url.getLocation(function (l) { elegir(hash || (l && l.parameter && l.parameter.tab) || ''); }); }
+    catch (x) { elegir(hash); }
   }, function (e) { $('#view').innerHTML = '<div class="vacio" style="color:#C00000">' + esc(e.message) + '</div>'; });
 }
 
@@ -361,19 +366,31 @@ function cargarEquipos() {
   api('adminEquipos').then(function (d) { EQS = d; pintarEquipos(); }, function (e) { $('#view').innerHTML = '<div class="vacio">' + esc(e.message) + '</div>'; });
 }
 function pintarEquipos() {
-  var d = EQS;
-  var h = '<div class="toolbar"><span class="titulo">Equipos</span><button class="btn pri" id="bNuevoEq">＋ Nuevo equipo</button>' +
-    '<span class="muted">Catálogo único: lo usan las 5 apps. Desactivar oculta el equipo sin borrar su historial.</span></div>' +
-    '<div class="scroll-x"><table class="t"><tr><th>Equipo</th><th>TAG</th><th>Área</th><th>Sector</th><th>Ubicación técnica</th><th>Paralelo</th><th>Pérdida KTon/h</th><th>Cintas (espesores)</th><th>Mapeo</th><th>Activo</th><th></th></tr>' +
-    d.equipos.map(function (e, i) {
-      var act = e.ACTIVO !== 'NO';
-      return '<tr class="' + (act ? '' : 'inactivo') + '"><td><b>' + esc(e.ID_EQUIPO) + '</b><br><small class="muted">' + esc(e.NOMBRE) + '</small></td><td>' + esc(e.TAG) + '</td><td>' + esc(e.AREA) +
-        '</td><td>' + esc(e.SECTOR) + '</td><td>' + esc(e.UBICACION_TECNICA) + '</td><td>' + esc(e.EQUIPOS_EN_PARALELO) + '</td><td>' + esc(e.PERDIDA_KTON_HORA) +
-        '</td><td>' + e._cintas.length + '</td><td>' + (e._mapeo ? '✔' : '—') + '</td><td>' + (act ? 'SI' : 'NO') + '</td>' +
-        '<td class="acc"><button class="btn sm" data-ed="' + i + '">✎ Editar</button> <button class="btn sm ' + (act ? 'peligro' : '') + '" data-act="' + i + '">' + (act ? 'Desactivar' : 'Activar') + '</button></td></tr>';
-    }).join('') + '</table></div>';
+  var d = EQS, ed = d.puedeEditar, q = (TAB_FILTRO.buscarEq || '').toLowerCase();
+  var num = function (v, u) { return v === '' || v === null || v === undefined ? '—' : esc(v) + (u || ''); };
+  var lista = d.equipos.map(function (e, i) { return [e, i]; }).filter(function (p) {
+    var e = p[0], f = e._ficha || {};
+    return !q || [e.ID_EQUIPO, e.TAG, e.NOMBRE, e.UBICACION_TECNICA, f.TIPO_CINTA, f.TIPO_CARCAZA, f.MARCA].join(' ').toLowerCase().indexOf(q) >= 0;
+  });
+  var h = '<div class="toolbar"><span class="titulo">Catálogo de equipos</span>' +
+    '<input id="bEq" type="search" placeholder="Buscar equipo, TAG, cinta…" value="' + esc(TAB_FILTRO.buscarEq || '') + '" style="max-width:260px">' +
+    (ed ? '<button class="btn pri" id="bNuevoEq">＋ Nuevo equipo</button>' : '') +
+    '<span class="muted">' + d.equipos.length + ' equipos · Catálogo único: lo usan todas las apps e informes (Checklist, Mapeo, Espesores, Semanal, Pauta y Flash). ' +
+    (ed ? 'Desactivar oculta el equipo sin borrar su historial.' : 'Solo los administradores lo modifican.') + '</span></div>' +
+    '<div class="scroll-x"><table class="t"><tr><th>Equipo</th><th>TAG</th><th>Ubicación técnica</th><th>Cinta</th><th>Cables / telas</th><th>Espesor carga / retorno / total (mm)</th><th>Ancho</th><th>Largo</th><th>Marca</th>' + (ed ? '<th>Activo</th>' : '') + '<th></th></tr>' +
+    lista.map(function (p) {
+      var e = p[0], i = p[1], f = e._ficha || {}, act = e.ACTIVO !== 'NO';
+      return '<tr class="' + (act ? '' : 'inactivo') + '"><td><b>' + esc(e.ID_EQUIPO) + '</b><br><small class="muted">' + esc(e.NOMBRE) + '</small></td><td>' + esc(e.TAG) +
+        '</td><td>' + esc(e.UBICACION_TECNICA) + '</td><td>' + (f.TIPO_CINTA || f.TIPO_CARCAZA ? esc(f.TIPO_CINTA) + '<br><small class="muted">' + esc(f.TIPO_CARCAZA) + '</small>' : '<span class="muted">sin ficha</span>') +
+        '</td><td>' + num(f.CANT_CABLES_TELAS) + '</td><td>' + num(f.ESP_CARGA_MM) + ' / ' + num(f.ESP_RETORNO_MM) + ' / ' + num(f.ESP_TOTAL_MM) +
+        '</td><td>' + num(f.ANCHO_PULG, '"') + '</td><td>' + (e._largo ? Number(e._largo).toLocaleString('es-CL') + ' m' : '—') + '</td><td>' + esc(f.MARCA) + '</td>' +
+        (ed ? '<td>' + (act ? 'SI' : 'NO') + '</td>' : '') +
+        '<td class="acc"><button class="btn sm" data-ed="' + i + '">' + (ed ? '✎ Editar' : 'Ver ficha') + '</button>' +
+        (ed ? ' <button class="btn sm ' + (act ? 'peligro' : '') + '" data-act="' + i + '">' + (act ? 'Desactivar' : 'Activar') + '</button>' : '') + '</td></tr>';
+    }).join('') + '</table></div>' + (lista.length ? '' : '<div class="vacio">Ningún equipo coincide con la búsqueda.</div>');
   $('#view').innerHTML = h;
-  $('#bNuevoEq').onclick = function () { modalEquipo(null); };
+  var be = $('#bEq'); be.oninput = function () { TAB_FILTRO.buscarEq = this.value; var pos = this.selectionStart; pintarEquipos(); var n = $('#bEq'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (x) { } };
+  if ($('#bNuevoEq')) $('#bNuevoEq').onclick = function () { modalEquipo(null); };
   $$('[data-ed]').forEach(function (b) { b.onclick = function () { modalEquipo(EQS.equipos[+b.dataset.ed]); }; });
   $$('[data-act]').forEach(function (b) {
     b.onclick = function () {
@@ -384,21 +401,34 @@ function pintarEquipos() {
   });
 }
 function modalEquipo(e) {
-  var d = EQS, nuevo = !e; e = e || { AREA: INI.area, ACTIVO: 'SI', MULTI_TRAMO: 'NO', N_TRAMOS: 1, EQUIPOS_EN_PARALELO: 1 };
-  var inp = function (k, lab, extra, cls) { return '<div class="' + (cls || '') + '"><label>' + lab + '</label><input name="' + k + '" value="' + esc(e[k]) + '"' + (extra || '') + '></div>'; };
-  var sel = function (k, lab, ops) { return '<div><label>' + lab + '</label><select name="' + k + '">' + ops.map(function (o) { return '<option' + (String(e[k]) === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>'; };
+  var d = EQS, nuevo = !e, ed = d.puedeEditar; e = e || { AREA: INI.area, ACTIVO: 'SI', MULTI_TRAMO: 'NO', N_TRAMOS: 1, EQUIPOS_EN_PARALELO: 1, _ficha: {} };
+  var ro = ed ? '' : ' disabled';
+  var inp = function (k, lab, extra, cls) { return '<div class="' + (cls || '') + '"><label>' + lab + '</label><input name="' + k + '" value="' + esc(e[k]) + '"' + (extra || '') + ro + '></div>'; };
+  var sel = function (k, lab, ops) { return '<div><label>' + lab + '</label><select name="' + k + '"' + ro + '>' + ops.map(function (o) { return '<option' + (String(e[k]) === o ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>'; };
+  var fi = e._ficha || {};
+  var ficha = d.camposFicha.map(function (c) {
+    var v = fi[c.k] === undefined ? '' : fi[c.k];
+    if (c.k === 'TIPO_CARCAZA') return '<div><label>' + esc(c.t) + '</label><select name="ficha::TIPO_CARCAZA"' + ro + '>' + ['', 'TEXTIL', 'CABLE'].concat(v && ['TEXTIL', 'CABLE'].indexOf(String(v).toUpperCase()) < 0 ? [v] : []).map(function (o) { return '<option' + (String(v).toUpperCase() === String(o).toUpperCase() ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>';
+    if (c.k === 'SENTIDO_GIRO') return '<div><label>' + esc(c.t) + '</label><select name="ficha::SENTIDO_GIRO"' + ro + '>' + ['', 'IZQUIERDA', 'DERECHA'].map(function (o) { return '<option' + (String(v).toUpperCase() === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select></div>';
+    return '<div class="' + (/TIPO_CINTA|ULTIMO_CAMBIO|MARCA/.test(c.k) ? 'c2' : '') + '"><label>' + esc(c.t) + '</label><input name="ficha::' + c.k + '" value="' + esc(v) + '"' + (c.n ? ' inputmode="decimal"' : '') + ro + '></div>';
+  }).join('');
   var plantilla = nuevo ? (d.equipos.filter(function (x) { return x._plan; })[0] || {})._plan : e._plan;
   var plan = d.cabPlan.map(function (c, j) {
     var v = plantilla ? plantilla[j] : '';
-    return '<div class="' + (String(v).length > 40 ? 'c2' : '') + '"><label title="' + esc(c) + '">' + esc(c) + '</label><input name="plan::' + esc(c) + '" value="' + esc(v) + '"></div>';
+    return '<div class="' + (String(v).length > 40 ? 'c2' : '') + '"><label title="' + esc(c) + '">' + esc(c) + '</label><input name="plan::' + esc(c) + '" value="' + esc(v) + '"' + ro + '></div>';
   }).join('');
   var cuerpo = '<div class="form">' +
+    (ed ? '' : '<div class="c4 hint" style="margin-bottom:10px">Solo lectura. El catálogo lo modifican los administradores.</div>') +
     '<fieldset><legend>Identificación</legend><div class="sub">' +
       inp('ID_EQUIPO', 'ID equipo (ej: 110FE07)', nuevo ? ' required' : ' readonly') + inp('TAG', 'TAG (ej: CT-110-FE-07)', ' placeholder="automático"') +
       inp('NOMBRE', 'Nombre', ' placeholder="= ID si se deja vacío"') + sel('TIPO', 'Tipo', ['FE', 'CV', 'OTRO']) +
-      '<div><label>Área</label><select name="AREA">' + d.areas.map(function (a) { return '<option' + (a.AREA === e.AREA ? ' selected' : '') + '>' + esc(a.AREA) + '</option>'; }).join('') + '</select></div>' +
+      '<div><label>Área</label><select name="AREA"' + ro + '>' + d.areas.map(function (a) { return '<option' + (a.AREA === e.AREA ? ' selected' : '') + '>' + esc(a.AREA) + '</option>'; }).join('') + '</select></div>' +
       inp('SECTOR', 'Sector (ej: 110)', ' inputmode="numeric"') + inp('UBICACION_TECNICA', 'Ubicación técnica (SAP)', '', 'c2') +
       inp('DIVISION', 'División', ' placeholder="la del área"') + inp('GERENCIA', 'Gerencia / superintendencia', ' placeholder="la del área"', 'c2') + inp('AREA_PROCESO', 'Área / proceso', ' placeholder="la del área"') +
+    '</div></fieldset>' +
+    '<fieldset><legend>Ficha técnica de la cinta</legend><div class="sub">' + ficha +
+      '<div class="c4 hint">Largo de la cinta: <b>' + (e._largo ? esc(e._largo) + ' m' : 'sin metros') + '</b> (suma de los tramos vigentes en Mapeo de Cintas). ' +
+      'Esta ficha es la que usan el Checklist (y sus PDF), Mapeo y los demás informes.</div>' +
     '</div></fieldset>' +
     '<fieldset><legend>Operación</legend><div class="sub">' +
       inp('EQUIPOS_EN_PARALELO', 'Equipos en paralelo', ' inputmode="numeric"') + sel('MULTI_TRAMO', 'Multi tramo', ['NO', 'SI']) + inp('N_TRAMOS', 'N° tramos', ' inputmode="numeric"') +
@@ -408,28 +438,29 @@ function modalEquipo(e) {
     '<fieldset><legend>Plan de mantenimiento (Pauta de Inspección)' + (nuevo ? ' — copiado de otro equipo, ajústelo' : '') + '</legend><div class="sub">' + plan + '</div></fieldset>' +
     '<fieldset><legend>Medición de espesores: ' + (e._cintas && e._cintas.length ? 'cintas vigentes' : 'sin cinta registrada') + '</legend>' +
       (e._cintas && e._cintas.length ? '<div class="hint" style="margin-bottom:8px">' + e._cintas.map(esc).join('<br>') + '<br>Para reemplazar una cinta use “Cambio de cinta” en la app de Espesores.</div>' : '') +
-      '<label style="text-transform:none;font-weight:400"><input type="checkbox" id="chkCinta" style="width:auto"> Registrar ' + (e._cintas && e._cintas.length ? 'otro tramo' : 'la cinta instalada') + ' (para que aparezca en Medición de espesores)</label>' +
+      (ed ? '<label style="text-transform:none;font-weight:400"><input type="checkbox" id="chkCinta" style="width:auto"> Registrar ' + (e._cintas && e._cintas.length ? 'otro tramo' : 'la cinta instalada') + ' (para que aparezca en Medición de espesores)</label>' +
       '<div class="sub" id="cintaCampos" style="display:none;margin-top:8px">' +
-        ['tramo|Tramo (ÚNICO, TRAMO 01…)|ÚNICO', 'espec|Especificación (ej: EP2500/5)|', 'fabricante|Fabricante|', 'grado|Grado cubierta|', 'fechaCambio|Fecha de instalación|',
-         'espTotal|Espesor total (mm)|', 'espCarga|Espesor carga (mm)|', 'espRet|Espesor retorno (mm)|', 'cables|Cables o telas|', 'ancho|Ancho (mm)|',
+        ['tramo|Tramo (ÚNICO, TRAMO 01…)|ÚNICO', 'espec|Especificación (ej: EP2500/5)|' + (fi.TIPO_CINTA || ''), 'fabricante|Fabricante|' + (fi.MARCA || ''), 'grado|Grado cubierta|' + (fi.MODELO_CUBIERTA || ''), 'fechaCambio|Fecha de instalación|',
+         'espTotal|Espesor total (mm)|' + (fi.ESP_TOTAL_MM || ''), 'espCarga|Espesor carga (mm)|' + (fi.ESP_CARGA_MM || ''), 'espRet|Espesor retorno (mm)|' + (fi.ESP_RETORNO_MM || ''), 'cables|Cables o telas|' + (fi.CANT_CABLES_TELAS || ''), 'ancho|Ancho (mm)|' + (fi.ANCHO_PULG ? Math.round(fi.ANCHO_PULG * 25.4) : ''),
          'vidaUtil|Vida útil (días)|', 'segCarga|Espesor seguridad carga (mm)|', 'segRet|Espesor seguridad retorno (mm)|'].map(function (x) {
           var p = x.split('|');
           return '<div><label>' + p[1] + '</label><input name="cinta::' + p[0] + '" value="' + esc(p[2]) + '"' + (p[0] === 'fechaCambio' ? ' type="date"' : (/^(esp|seg|cables|ancho|vida)/.test(p[0]) ? ' inputmode="decimal"' : '')) + '></div>';
         }).join('') +
-      '</div></fieldset>' +
-    (nuevo ? '<div class="c4 hint">Para que aparezca en Mapeo de Cintas, créelo después allí con “＋ Nueva cinta” usando el mismo código.</div>' : '') +
+      '</div>' : '') + '</fieldset>' +
+    (nuevo ? '<div class="c4 hint">Al guardar, el equipo queda disponible en todas las apps, incluido Mapeo de Cintas.</div>' : '') +
     '</div>';
-  modal({ titulo: nuevo ? 'Nuevo equipo' : 'Equipo ' + esc(e.ID_EQUIPO), cuerpo: cuerpo,
-    alAbrir: function (bg) { $('#chkCinta', bg).onchange = function () { $('#cintaCampos', bg).style.display = this.checked ? '' : 'none'; }; },
-    botones: [{ txt: 'Cancelar' }, { txt: 'Guardar', pri: true, fn: function (cerrar, b) {
-      var bg = b.closest('.modal-bg'), o = leerForm(bg), datos = { _nuevo: nuevo, _plan: {}, _cinta: null }, cinta = {};
+  modal({ titulo: (nuevo ? 'Nuevo equipo' : 'Equipo ' + esc(e.ID_EQUIPO)) + (ed ? '' : ' · ficha'), cuerpo: cuerpo,
+    alAbrir: function (bg) { if ($('#chkCinta', bg)) $('#chkCinta', bg).onchange = function () { $('#cintaCampos', bg).style.display = this.checked ? '' : 'none'; }; },
+    botones: !ed ? [{ txt: 'Cerrar', pri: true }] : [{ txt: 'Cancelar' }, { txt: 'Guardar', pri: true, fn: function (cerrar, b) {
+      var bg = b.closest('.modal-bg'), o = leerForm(bg), datos = { _nuevo: nuevo, _plan: {}, _ficha: {}, _cinta: null }, cinta = {};
       Object.keys(o).forEach(function (k) {
         if (k.indexOf('plan::') === 0) datos._plan[k.substring(6)] = o[k];
+        else if (k.indexOf('ficha::') === 0) datos._ficha[k.substring(7)] = o[k];
         else if (k.indexOf('cinta::') === 0) cinta[k.substring(7)] = o[k];
         else datos[k] = o[k];
       });
       if (!datos.ID_EQUIPO) { toast('Ingrese el ID del equipo', true); return; }
-      if ($('#chkCinta', bg).checked) {
+      if ($('#chkCinta', bg) && $('#chkCinta', bg).checked) {
         if (!cinta.fechaCambio || !cinta.espCarga || !cinta.espRet || !cinta.segCarga || !cinta.segRet || !cinta.ancho || !cinta.vidaUtil) { toast('Complete la fecha, espesores, seguridad, ancho y vida útil de la cinta', true); return; }
         datos._cinta = cinta;
       }
