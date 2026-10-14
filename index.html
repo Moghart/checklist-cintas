@@ -17,6 +17,8 @@
   <script>window.PUENTE = { modulo: 'GENERAL', app: 'inicio', sinNav: true, sinLogin: true };</script>
   <script src="puente.js"></script>
   <script src="preparar.js"></script>
+  <script src="marco.js"></script>
+  <link rel="stylesheet" href="tema.css">
   <style>
     :root { --navy:#0b2545; --azul:#2F5597; --azul-claro:#DAE3F3; --fondo:#EEF1F5; --texto:#1d2330; --muted:#5f6b7a; --rojo:#C00000; --radio:10px; }
     * { box-sizing: border-box; }
@@ -58,6 +60,8 @@
     .perfil input { width: auto; margin-top: 3px; }
     .perfil small { color: var(--muted); }
     .sinsenal { background: #FFF4CE; border: 1px solid #FFC000; color: #7a5a00; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: none; }
+    html.ic-esc .marca { display: none; }
+    html.ic-esc main { max-width: 1180px; padding: 28px 32px; }
     @media (max-width: 520px) { .marca img { height: 30px; } .marca .tit b { font-size: 13px; } .marca .tit small { display: none; } main { padding: 12px; } }
   </style>
 </head>
@@ -87,6 +91,7 @@ function badge(r) { return '<span class="badge b-' + esc(r) + '">' + esc(NOMBRE_
 function volverA() { var m = /[?&]volver=([^&]+)/.exec(location.search); return m ? decodeURIComponent(m[1]) : ''; }
 
 function pintarLogin(msg) {
+  if (window.MARCO) MARCO.refrescar();
   $('#vista').innerHTML =
     '<div class="caja" style="max-width:420px;margin:20px auto">' +
     '<h2>Iniciar sesión</h2>' +
@@ -174,6 +179,10 @@ function cargarMenu() {
 
 function pintarMenu(d, sinSenal) {
   var s = d.sesion || {}, base = SESION_APP.url();
+  if (window.MARCO) {
+    var perm = {}; (d.modulos || []).forEach(function (m) { perm[m.id] = m.rol; });
+    MARCO.pintar({ nombre: s.nombre || s.email || SESION_APP.email(), email: s.email || SESION_APP.email(), rol: s.rol || 'LECTOR', modulos: perm, sinSenal: !!sinSenal, area: ((d.areas || []).filter(function (x) { return x.area === d.area; })[0] || {}).nombre || d.area || '' });
+  }
   var h = '<div class="sinsenal" id="avisoSenal" style="display:' + (sinSenal ? 'block' : 'none') + '">📵 Sin señal: todas las actividades funcionan con lo guardado en el teléfono. Lo que registre se enviará solo al volver la señal.</div>';
   h += '<div class="caja usuario"><div class="quien">👤 <b>' + esc(s.nombre || s.email || SESION_APP.email()) + '</b> ' + badge(s.rol || 'LECTOR') +
        '<small>' + esc(s.email || SESION_APP.email()) + (d.area ? ' · ' + esc(d.area) : '') + '</small></div>';

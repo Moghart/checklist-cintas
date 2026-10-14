@@ -270,7 +270,7 @@
   function aviso(txt, err) {
     var t = document.createElement('div');
     t.textContent = txt;
-    t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:2147483002;max-width:92vw;padding:10px 14px;border-radius:8px;font:14px "Segoe UI",Roboto,Arial,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25);color:#fff;background:' + (err ? '#C00000' : '#1f2937');
+    t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:2147483002;max-width:92vw;padding:10px 14px;border-radius:8px;font:14px "Segoe UI",Roboto,Arial,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25);color:#fff;background:' + (err ? '#C00000' : '#1f2937');
     document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, err ? 7000 : 3500);
   }
@@ -291,36 +291,19 @@
     document.head.appendChild(st);
   }
 
+  /** Envía al marco común (marco.js: menú lateral en escritorio, barra inferior en celular) el estado de la sesión. */
+  var rolGeneral = '', permisos = null, areaNombre = '';
   function pintarNav() {
-    if (!document.body || CFG.sinNav) return;
-    estilos();
-    var d = document.getElementById('icNav');
-    if (!d) {
-      d = document.createElement('div'); d.id = 'icNav';
-      d.innerHTML = '<div class="p" id="icNavP"></div><button type="button" title="Menú y sesión">☰</button>';
-      document.body.appendChild(d);
-      d.querySelector('button').onclick = function () { d.classList.toggle('on'); };
-    }
+    if (!document.body || !window.MARCO) return;
     colaTodos().then(function (cola) {
-      var pend = cola.filter(function (i) { return i.modulo === (CFG.modulo || ''); });
-      var errores = pend.filter(function (i) { return i.estado === 'error'; });
-      var b = d.querySelector('button');
-      b.className = sinSenalAhora ? 'off' : '';
-      b.innerHTML = '☰' + (pend.length ? '<i>' + pend.length + '</i>' : '');
-      var nombre = SESION_APP.nombre() || SESION_APP.email();
-      var h = '👤 <b>' + esc(nombre || 'Sin sesión') + '</b><br><small>' + esc(SESION_APP.email()) + '</small>' +
-        (perfil ? '<br>Perfil en esta app: <b>' + (NOMBRE_ROL[perfil.rol] || perfil.rol) + '</b>' : '') +
-        '<br>' + (sinSenalAhora ? '📵 <b>Sin señal</b>: trabajando con lo guardado en el teléfono' : '📶 Con señal');
-      if (CFG.colaEscritura) {
-        h += '<br>📤 Cambios por enviar: <b>' + pend.length + '</b>';
-        if (pend.length && !sinSenalAhora) h += '<button class="bt" id="icSync">🔄 Enviar ahora</button>';
-        errores.forEach(function (e) { h += '<div class="err">⚠ ' + esc(e.fn) + ': ' + esc(e.error) + ' <a href="#" class="sec" data-desc="' + e.id + '" style="display:inline;padding:2px 6px;margin:0">Descartar</a></div>'; });
-      }
-      h += '<a href="index.html">☰ Menú de actividades</a>';
-      document.getElementById('icNavP').innerHTML = h;
-      var s = document.getElementById('icSync'); if (s) s.onclick = function () { sincronizar(true); };
-      Array.prototype.forEach.call(d.querySelectorAll('[data-desc]'), function (a) {
-        a.onclick = function (ev) { ev.preventDefault(); if (confirm('¿Descartar este cambio? No se enviará.')) colaQuitar(+a.dataset.desc).then(pintarNav); };
+      var pend = CFG.modulo && CFG.modulo !== 'GENERAL' ? cola.filter(function (i) { return i.modulo === CFG.modulo; }) : cola;
+      MARCO.pintar({
+        nombre: SESION_APP.nombre() || SESION_APP.email(), email: SESION_APP.email(),
+        rol: (perfil && perfil.rol) || rolGeneral, modulos: permisos, area: areaNombre,
+        sinSenal: sinSenalAhora, pendientes: pend.length, puedeEnviar: !!CFG.colaEscritura,
+        errores: pend.filter(function (i) { return i.estado === 'error'; }),
+        enviar: function () { sincronizar(true); },
+        descartar: function (id) { colaQuitar(id).then(pintarNav); }
       });
     });
   }
@@ -328,10 +311,18 @@
 
   function alCargar() {
     pintarNav();
+    if (SESION_APP.token()) leer('inicioDatos', []).then(function (d) {
+      if (!d) return;
+      rolGeneral = (d.sesion && d.sesion.rol) || '';
+      permisos = {}; (d.modulos || []).forEach(function (m) { permisos[m.id] = m.rol; });
+      areaNombre = ((d.areas || []).filter(function (x) { return x.area === d.area; })[0] || {}).nombre || d.area || '';
+      pintarNav();
+    }).catch(function () { });
     if (CFG.modulo && CFG.modulo !== 'GENERAL') {
       leer('sesionEstado', [CFG.modulo]).then(function (s) {
         perfil = s; pintarNav();
         if (CFG.avisoPerfil !== false && s && (s.rol === 'LECTOR' || s.rol === 'NINGUNO') && !document.getElementById('icLect')) {
+          estilos();
           var b = document.createElement('div'); b.id = 'icLect';
           b.textContent = s.rol === 'NINGUNO' ? 'Sin acceso a esta app' : 'Visualizador: puede ver y descargar, no guardar';
           document.body.appendChild(b);
