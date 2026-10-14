@@ -1,0 +1,926 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- App instalable Inspección Cintas: sesión + funcionamiento sin señal -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#0b2545">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Inspección Cintas">
+  <script src="config.js"></script>
+  <script src="sesion.js"></script>
+  <script src="funciones.js"></script>
+  <script>window.PUENTE = {"colaEscritura": true, "modulo": "MAPEO", "app": "mapeo"};</script>
+  <script src="puente.js"></script>
+  <script src="preparar.js"></script>
+
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapeo de Cintas · Inspección Cintas</title>
+  
+<style>
+  :root{
+    --azul:#2F5597; --azul-osc:#1F3864; --azul-claro:#DAE3F3; --gris:#D9D9D9; --gris2:#A6A6A6; --gris-fondo:#EEF1F5;
+    --negro:#111; --borde:#9AA4B2; --texto:#1d2330; --muted:#5f6b7a; --ok:#00B050; --rojo:#C00000; --amarillo:#FFC000;
+    --radio:6px; --sombra:0 1px 3px rgba(0,0,0,.12),0 4px 14px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--gris-fondo);color:var(--texto);font:14px/1.4 Calibri,"Segoe UI",Roboto,Arial,sans-serif}
+  button,input,select,textarea{font:inherit;color:inherit}
+  a{color:var(--azul)}
+
+  /* ---------- barra superior */
+  .top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--azul);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .logos-top{display:inline-flex;align-items:center;gap:10px;background:#fff;border-radius:5px;padding:3px 10px;height:46px}
+  .logos-top img{height:38px;width:auto;display:block}
+  .logos-top img+img{border-left:1px solid #ddd;padding-left:10px}
+  .top h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.2px;line-height:1.1}
+  .top h1 small{display:block;font-weight:400;font-size:12px;opacity:.85}
+  .top .sp{flex:1}
+  .chip-user{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+
+  main{max-width:1500px;margin:0 auto;padding:16px}
+
+  /* ---------- botones */
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--azul);background:#fff;color:var(--azul);padding:7px 12px;border-radius:var(--radio);cursor:pointer;font-weight:600;font-size:13px;white-space:nowrap}
+  .btn:hover{background:var(--azul-claro)}
+  .btn.pri{background:var(--azul);color:#fff}
+  .btn.pri:hover{background:var(--azul-osc)}
+  .btn.peligro{border-color:var(--rojo);color:var(--rojo)}
+  .btn.peligro:hover{background:#fde8e8}
+  .btn.sm{padding:4px 8px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .toolbar .titulo{font-size:20px;font-weight:700;margin-right:8px}
+
+  /* ---------- inicio */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{background:#fff;border-radius:var(--radio);padding:10px 14px;box-shadow:var(--sombra);border-left:5px solid var(--azul)}
+  .kpi b{display:block;font-size:24px;line-height:1.1}
+  .kpi span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .filtros input[type=search]{flex:1;min-width:200px;padding:8px 10px;border:1px solid var(--borde);border-radius:var(--radio);background:#fff}
+  .pill{border:1px solid var(--borde);background:#fff;border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer}
+  .pill.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+  .grid-cintas{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+  .card{background:#fff;border-radius:var(--radio);box-shadow:var(--sombra);overflow:hidden;cursor:pointer;border:1px solid transparent;transition:transform .08s}
+  .card:hover{border-color:var(--azul);transform:translateY(-1px)}
+  .card .cab{background:var(--azul);color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center}
+  .card .cab b{font-size:16px;letter-spacing:.3px}
+  .card .cuerpo{padding:10px 12px;font-size:13px}
+  .card .fila{display:flex;justify-content:space-between;border-bottom:1px dashed #e3e6ea;padding:3px 0}
+  .card .fila span:first-child{color:var(--muted)}
+  .badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+  .badge{display:inline-block;border-radius:3px;padding:1px 7px;font-size:11px;font-weight:700;border:1px solid rgba(0,0,0,.25)}
+  .estado-dot{width:12px;height:12px;border-radius:50%;border:2px solid #fff;display:inline-block}
+
+  /* ---------- HOJA (réplica de la planilla) */
+  .hoja{background:#fff;border:1px solid #000;padding:14px 16px;margin-bottom:16px;box-shadow:var(--sombra)}
+  .hoja-tit{display:grid;grid-template-columns:200px 1fr 200px;align-items:center;margin-bottom:10px}
+  .hoja-tit h2{text-align:center;margin:0;font-size:24px;text-decoration:underline}
+  .hoja-tit img{max-height:64px;max-width:190px}
+  .hoja-tit .der{text-align:right}
+  .cab-grid{display:grid;grid-template-columns:minmax(260px,1.1fr) minmax(240px,1fr) minmax(280px,1.1fr) minmax(260px,1.3fr);gap:18px;align-items:start}
+  table.x{border-collapse:collapse;width:100%;font-size:12.5px}
+  table.x td,table.x th{border:1px solid #000;padding:3px 6px;height:22px}
+  table.x .lab{background:var(--azul);color:#fff;width:58%}
+  table.x .val{text-align:center;font-weight:700;background:#fff}
+  table.x .gr{background:var(--gris);text-align:center;font-weight:400}
+  table.x th{background:var(--azul);color:#fff;font-weight:700;text-align:center}
+  .img-cinta{width:100%;max-height:330px;object-fit:contain;border:1px solid #e5e5e5;background:#fafafa}
+  .img-vacia{height:200px;display:flex;align-items:center;justify-content:center;border:2px dashed var(--gris2);color:var(--muted);text-align:center;padding:10px}
+  .sec-tit{text-align:center;font-size:22px;font-weight:700;text-decoration:underline;border:1px solid #000;padding:4px;margin:0 0 12px}
+  .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.hall{border-collapse:collapse;width:100%;min-width:1100px;font-size:12.5px}
+  table.hall th{background:var(--azul);color:#fff;border:1px solid #fff;padding:4px;font-weight:700}
+  table.hall td{border:1px solid #000;padding:4px 6px;text-align:center;height:34px}
+  table.hall td.ubi{background:var(--azul);color:#fff;font-weight:700}
+  table.hall td.det{text-align:left;min-width:220px}
+  table.hall tr.dato{cursor:pointer}
+  table.hall tr.dato:hover td:not(.ubi):not(.crit){background:#f1f5fc}
+  table.hall tr.cerrado td{opacity:.55;text-decoration:line-through}
+  table.hall td.crit{font-weight:700}
+  .foto-ind{font-size:11px;color:var(--azul);font-weight:700;white-space:nowrap}
+
+  /* ---------- diagrama */
+  .giro{display:flex;align-items:center;gap:14px;font-weight:700;margin:14px 0 6px}
+  .giro .flecha{color:var(--rojo);font-size:22px;letter-spacing:-2px}
+  .tramo{margin-bottom:14px;min-width:1100px}
+  .tramo table{border-collapse:collapse;width:100%;table-layout:fixed}
+  .tramo th{background:var(--azul);color:#fff;font-size:10.5px;font-weight:700;border:1px solid #fff;padding:2px;text-align:center}
+  .tramo td.emp{background:var(--gris2);font-weight:700;text-align:center;width:90px;border:1px solid #000;cursor:default;font-size:13px}
+  .tramo td.ins{background:var(--azul);color:#fff;font-weight:700;font-size:10.5px;text-align:center;border:1px solid #000;width:90px}
+  .tramo td.banda{padding:0;border:1px solid #000;background:#000}
+  .tramo td.insbar{padding:0;border:1px solid #000;height:22px}
+  .tramo svg{display:block;width:100%}
+  .mk{cursor:pointer}
+  .mk:hover rect{stroke:#00E5FF;stroke-width:3}
+  .leyenda{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;margin:6px 0 10px}
+  .leyenda i{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:middle;margin-right:4px}
+
+  /* ---------- historial */
+  details.hist{background:#fff;box-shadow:var(--sombra);border-radius:var(--radio);padding:8px 12px;margin-bottom:20px}
+  details.hist summary{cursor:pointer;font-weight:700;color:var(--azul)}
+  .hist-l{font-size:12px;max-height:300px;overflow:auto}
+  .hist-l div{border-bottom:1px solid #eee;padding:4px 0}
+
+  /* ---------- modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:24px 10px;overflow:auto}
+  .modal{background:#fff;border-radius:8px;width:min(980px,100%);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+  .modal.sm{width:min(520px,100%)}
+  .modal header{background:var(--azul);color:#fff;padding:10px 16px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .modal header h3{margin:0;font-size:16px}
+  .modal header button{background:none;border:0;color:#fff;font-size:22px;cursor:pointer;line-height:1}
+  .modal .cont{padding:14px 16px}
+  .modal footer{padding:10px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .modal footer .izq{margin-right:auto}
+  .form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+  .form>*,.sub-grid>*{min-width:0}
+  .form .c2{grid-column:span 2}.form .c4{grid-column:1/-1}
+  .form label{display:block;font-size:11.5px;font-weight:700;color:var(--azul-osc);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+  .form input,.form select,.form textarea{width:100%;padding:7px 8px;border:1px solid var(--borde);border-radius:4px;background:#fff}
+  .form input:focus,.form select:focus,.form textarea:focus{outline:2px solid var(--azul);outline-offset:-1px}
+  .form input[readonly]{background:#f3f4f6}
+  .form .hint{font-size:11px;color:var(--muted)}
+  .form fieldset{grid-column:1/-1;min-width:0;border:1px solid var(--gris);border-radius:6px;padding:10px;margin:0}
+  .form legend{font-weight:700;color:var(--azul);padding:0 6px}
+  .sub-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}
+  .picker{border:1px solid var(--borde);border-radius:4px;overflow:hidden;cursor:crosshair;background:#000}
+  .picker-info{font-size:12px;color:var(--muted);margin-top:4px}
+
+  .fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .foto{border:1px solid var(--gris);border-radius:6px;overflow:hidden;background:#fafafa;position:relative}
+  .foto img{width:100%;height:120px;object-fit:cover;display:block;cursor:zoom-in;background:#ddd}
+  .foto input{width:100%;border:0;border-top:1px solid var(--gris);padding:4px 6px;font-size:12px}
+  .foto .x{position:absolute;top:4px;right:4px;background:rgba(192,0,0,.9);color:#fff;border:0;border-radius:50%;width:24px;height:24px;cursor:pointer;font-weight:700}
+  .foto .pend{position:absolute;left:4px;top:4px;background:var(--amarillo);font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px}
+  .drop{border:2px dashed var(--azul);border-radius:6px;padding:14px;text-align:center;color:var(--azul);cursor:pointer;background:#f6f9fe}
+  .drop.on{background:var(--azul-claro)}
+
+  table.edit{border-collapse:collapse;width:100%;font-size:13px}
+  table.edit th{background:var(--azul);color:#fff;padding:5px;font-size:12px}
+  table.edit td{border:1px solid var(--gris);padding:3px}
+  table.edit input,table.edit select{width:100%;border:1px solid transparent;padding:4px;background:transparent}
+  table.edit input:focus{border-color:var(--azul);background:#fff}
+  table.edit tr.reemp td{color:var(--muted);background:#f6f6f6}
+
+  /* ---------- otros */
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 16px;border-radius:6px;z-index:80;box-shadow:var(--sombra);max-width:90vw}
+  .toast.err{background:var(--rojo)}
+  .cargando{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:90;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-weight:700;color:var(--azul)}
+  .spin{width:42px;height:42px;border:5px solid var(--azul-claro);border-top-color:var(--azul);border-radius:50%;animation:g 0.8s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+  .visor{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:95;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+  .visor img{max-width:96vw;max-height:92vh}
+  .vacio{padding:30px;text-align:center;color:var(--muted)}
+  .muted{color:var(--muted)}
+
+  @media (max-width:900px){
+    .cab-grid{grid-template-columns:1fr}
+    .form,.sub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .hoja-tit{grid-template-columns:1fr}
+    .hoja-tit .der,.hoja-tit .izq{display:none}
+    .top h1 small{display:none}
+    .logos-top{height:36px;padding:2px 6px}.logos-top img{height:28px}.top h1{font-size:14px}
+  }
+  @media (max-width:520px){ .form,.sub-grid{grid-template-columns:minmax(0,1fr)} .form .c2{grid-column:auto} main{padding:10px} }
+
+  /* ---------- impresión: sólo la hoja */
+  @media print{
+    @page{size:letter landscape;margin:8mm}
+    body{background:#fff}
+    .top,.toolbar,.no-print,details.hist,.modal-bg,.toast{display:none!important}
+    main{padding:0;max-width:none}
+    .hoja{box-shadow:none;page-break-inside:auto}
+    .tramo{page-break-inside:avoid;min-width:0}
+    table.hall{min-width:0}
+    .scroll-x{overflow:visible}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+
+
+</head>
+<body>
+  <div class="top">
+    <span class="logos-top" id="logosTop" style="display:none"><img id="logoTop" alt="msmin by SGS"><img id="logoTop2" alt="CODELCO"></span>
+    <h1>Mapeo de Sistemas Transportadores<small id="subTop">Cargando…</small></h1>
+    <div class="sp"></div>
+    <span class="chip-user" id="chipUser" title="Cambiar nombre del inspector">👤 —</span>
+  </div>
+  <main id="view"><div class="vacio">Cargando datos… <small>(si este texto no cambia en 10 segundos, el código App no se está ejecutando)</small></div></main>
+  <div id="modalRoot"></div>
+  
+<script>
+var VERSION_APP = '1.0.2';
+var CINTA_INICIAL = '';
+try { document.getElementById('view').innerHTML = '<div class="vacio">Conectando con el servidor… (app v' + VERSION_APP + ')</div>'; } catch (e) {}
+
+const SECC = 15;
+const S = {
+  init: null, data: null, filtro: '', critFiltro: '', mostrarCerrados: false,
+  nombre: lsGet('mc_nombre') || ''
+};
+
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+function esc(v){
+  if(v===null||v===undefined) return '';
+  return String(v).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;')
+    .split(String.fromCharCode(34)).join('&quot;').split(String.fromCharCode(39)).join('&#39;');
+}
+function n(v){ if(v===null||v===undefined||v==='') return null; if(typeof v==='number') return v;
+  let s=String(v).replace(/\s/g,''); if(/^\d+,\d+$/.test(s)) s=s.replace(',','.'); const m=s.replace(/,/g,'').match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):null; }
+function fmtF(s){ if(!s) return ''; const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m? `${m[3]}-${m[2]}-${m[1]}` : String(s); }
+function fmtN(v,d=2){ const x=n(v); return x===null? '' : (Math.round(x*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('es-CL'); }
+function hoy(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function api(fn, ...args){
+  return new Promise((res, rej) => {
+    google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e && e.message ? e : new Error(String(e))))[fn](...args);
+  });
+}
+let cargas = 0;
+function cargando(on, txt){
+  cargas += on ? 1 : -1; if(cargas<0) cargas=0;
+  let d = $('#cargando');
+  if(cargas>0){ if(!d){ d=document.createElement('div'); d.id='cargando'; d.className='cargando'; d.innerHTML='<div class="spin"></div><div id="cargTxt"></div>'; document.body.appendChild(d); }
+    $('#cargTxt').textContent = txt || 'Procesando…'; }
+  else if(d) d.remove();
+}
+async function llamar(fn, args, txt){
+  cargando(true, txt);
+  try { return await api(fn, ...args); }
+  catch(e){ toast(e.message || e, true); throw e; }
+  finally { cargando(false); }
+}
+function toast(msg, err){
+  const t=document.createElement('div'); t.className='toast'+(err?' err':''); t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>t.remove(), err?6000:3000);
+}
+function puedeEditar(){ return S.init && S.init.usuario.rol !== 'LECTOR'; }
+function esAdmin(){ return S.init && S.init.usuario.rol === 'ADMIN'; }
+
+
+function critColor(v){ const l=(S.init.listas.CRITICIDAD||[]).find(x=>x.valor===v); return l&&l.color ? l.color : '#FFFFFF'; }
+function txtColor(bg){ const h=bg.replace('#',''); if(h.length<6) return '#000'; const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  return (r*299+g*587+b*114)/1000 < 140 ? '#fff' : '#000'; }
+function badge(v, extra=''){ const c=critColor(v); return `<span class="badge" style="background:${c};color:${txtColor(c)}">${esc(v)}${extra}</span>`; }
+function opciones(lista, sel, vacia){
+  const items=(S.init.listas[lista]||[]).map(x=>x.valor);
+  if(sel && items.indexOf(sel)<0) items.push(sel);
+  return (vacia?'<option value=""></option>':'') + items.map(v=>`<option ${v===sel?'selected':''}>${esc(v)}</option>`).join('');
+}
+
+
+function aMetros(txt, largoTramo){
+  if(txt===null||txt===undefined||txt==='') return null;
+  if(typeof txt==='number') return txt;
+  const t=String(txt).toLowerCase();
+  if(t.includes('desarrollo')||t.includes('todo')) return largoTramo;
+  const v=n(txt); if(v===null) return null;
+  if(/\bmm\b|mm$/.test(t)) return v/1000;
+  if(/\bcm\b/.test(t)) return v/100;
+  return v;
+}
+function ladoDesdeTexto(t){
+  t=(t||'').toLowerCase();
+  if(/ambos|ambas/.test(t)) return 'AMBOS';
+  if(/derech|\bld\b/.test(t)) return 'DERECHO';
+  if(/izq|\bli\b/.test(t)) return 'IZQUIERDO';
+  if(/transversal/.test(t)) return 'TRANSVERSAL';
+  return 'CENTRO';
+}
+
+
+function errorPantalla(msg){
+  const v=document.getElementById('view');
+  if(v) v.innerHTML = `<div class="vacio" style="color:#C00000"><b>Error al cargar la aplicación</b><br>${esc(msg)}<br><br>
+    <span class="muted">Revise: 1) que ejecutó la función <b>instalar</b> en el editor, 2) que publicó una <b>versión nueva</b> de la implementación,
+    3) ejecute la función <b>diagnostico</b> en el editor y revise el registro.</span></div>`;
+}
+window.addEventListener('error', e => errorPantalla(e.message || 'Error de script'));
+window.addEventListener('unhandledrejection', e => errorPantalla((e.reason && e.reason.message) || String(e.reason)));
+function arrancar(){ if(arrancar.hecho) return; arrancar.hecho=true; iniciar(); }
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', arrancar); else arrancar();
+async function iniciar(){
+  const aviso = setTimeout(()=>{ const v=$('#view'); if(v && !S.init) v.innerHTML='<div class="vacio">Cargando datos… (la primera carga puede tardar hasta 30 segundos)</div>'; }, 8000);
+  try{
+    S.init = await api('apiInit', S.nombre);
+    if(!S.init || !S.init.usuario) throw new Error('El servidor no devolvió datos (apiInit vacío).');
+  }catch(e){ clearTimeout(aviso); errorPantalla(e.message); return; }
+  clearTimeout(aviso);
+  const u=S.init.usuario;
+  $('#subTop').textContent = (S.init.config.AREA_NOMBRE||'') + (S.init.config.EMPRESA? ' · '+S.init.config.EMPRESA : '') + ' · v' + VERSION_APP;
+  if(S.init.logos.izq||S.init.logos.der){
+    if(S.init.logos.izq) $('#logoTop').src=S.init.logos.izq; else $('#logoTop').remove();
+    if(S.init.logos.der) $('#logoTop2').src=S.init.logos.der; else $('#logoTop2').remove();
+    $('#logosTop').style.display='';
+  }
+  pintarUsuario();
+  $('#chipUser').onclick = pedirNombre;
+  if(!u.email && !S.nombre) pedirNombre();
+  google.script.url.getLocation(loc => {
+    CINTA_INICIAL = (loc && loc.parameter && loc.parameter.cinta) || '';
+    if(CINTA_INICIAL) abrirCinta(CINTA_INICIAL); else renderInicio();
+  });
+  window.addEventListener('popstate', ()=>{ if(S.data) { S.data=null; renderInicio(); } });
+}
+function pintarUsuario(){
+  const u=S.init.usuario; $('#chipUser').textContent = '👤 ' + (u.email || S.nombre || 'Sin nombre') + ' · ' + u.rol;
+}
+function pedirNombre(){
+  if(S.init.usuario.email){ toast('Sesión: '+S.init.usuario.email+' ('+S.init.usuario.rol+')'); return; }
+  modal({ titulo:'Inspector', sm:true,
+    cuerpo:`<div class="form"><div class="c4"><label>Nombre del inspector (queda registrado en el historial)</label>
+      <input id="nomInsp" value="${esc(S.nombre)}" placeholder="Ej: Juan Pérez"></div></div>`,
+    botones:[{txt:'Guardar', pri:true, fn: cerrar => { S.nombre=$('#nomInsp').value.trim(); lsSet('mc_nombre', S.nombre); S.init.usuario.nombre=S.nombre; pintarUsuario(); cerrar(); }}]
+  });
+}
+
+async function recargarInit(){ S.init = await api('apiInit', S.nombre); }
+
+function renderInicio(){
+  const cs=S.init.cintas;
+  const tot=cs.reduce((a,c)=>{ a.h+=c.nHallazgos; a.cr+=(c.conteo.CRITICA||0); a.me+=(c.conteo.MEDIA||0); a.km+=c.largo; return a; },{h:0,cr:0,me:0,km:0});
+  const crits=(S.init.listas.CRITICIDAD||[]).map(x=>x.valor);
+  $('#view').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><b>${cs.length}</b><span>Cintas</span></div>
+      <div class="kpi"><b>${fmtN(tot.km,0)} m</b><span>Largo total mapeado</span></div>
+      <div class="kpi"><b>${tot.h}</b><span>Hallazgos abiertos</span></div>
+      <div class="kpi" style="border-color:${critColor('CRITICA')}"><b>${tot.cr}</b><span>Críticos</span></div>
+      <div class="kpi" style="border-color:${critColor('MEDIA')}"><b>${tot.me}</b><span>Medios</span></div>
+    </div>
+    <div class="filtros">
+      <input type="search" id="buscar" placeholder="Buscar por código, tipo de cinta, ubicación técnica…" value="${esc(S.filtro)}">
+      <span class="muted">Peor estado:</span>
+      <button class="pill ${!S.critFiltro?'on':''}" data-c="">Todas</button>
+      ${crits.map(c=>`<button class="pill ${S.critFiltro===c?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('')}
+      ${puedeEditar()? '<button class="btn pri" id="btnNueva">＋ Nueva cinta</button>' : ''}
+    </div>
+    <div class="grid-cintas" id="gridCintas"></div>`;
+  $('#buscar').oninput = e => { S.filtro=e.target.value; pintarCards(); };
+  $$('.pill').forEach(b => b.onclick = () => { S.critFiltro=b.dataset.c; renderInicio(); });
+  if($('#btnNueva')) $('#btnNueva').onclick = () => modalFicha(null);
+  pintarCards();
+}
+function pintarCards(){
+  const f=S.filtro.toLowerCase();
+  const cs=S.init.cintas.filter(c => (!f || [c.CODIGO,c.ID_CINTA,c.TIPO_CINTA,c.UBICACION_TECNICA,c.TIPO_CARCAZA].join(' ').toLowerCase().includes(f))
+    && (!S.critFiltro || c.peor===S.critFiltro));
+  $('#gridCintas').innerHTML = cs.length ? cs.map(c => `
+    <div class="card" data-id="${esc(c.ID_CINTA)}">
+      <div class="cab"><b>${esc(c.CODIGO)}</b><span class="estado-dot" title="Peor criticidad abierta: ${esc(c.peor)}" style="background:${critColor(c.peor)}"></span></div>
+      <div class="cuerpo">
+        <div class="fila"><span>Tipo</span><b>${esc(c.TIPO_CINTA||'-')} · ${esc(c.TIPO_CARCAZA||'')}</b></div>
+        <div class="fila"><span>Ubicación técnica</span><span>${esc(c.UBICACION_TECNICA||'-')}</span></div>
+        <div class="fila"><span>Tramos / Largo</span><span>${c.nTramos} · ${fmtN(c.largo)} m</span></div>
+        <div class="fila"><span>Actualización</span><span>${fmtF(c.FECHA_ACTUALIZACION)||'-'}</span></div>
+        <div class="badges">${Object.keys(c.conteo).length ? Object.keys(c.conteo).map(k=>badge(k,' '+c.conteo[k])).join('') : '<span class="muted">Sin hallazgos abiertos</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="vacio">Sin resultados</div>';
+  $$('.card').forEach(el => el.onclick = () => abrirCinta(el.dataset.id));
+}
+
+
+async function abrirCinta(id, silencioso){
+  const d = silencioso ? await api('apiGetCinta', id) : await llamar('apiGetCinta', [id], 'Cargando cinta…');
+  S.data = d;
+  if(!silencioso) history.pushState({c:id}, '', '');
+  renderCinta();
+  if(!silencioso) window.scrollTo(0,0);
+}
+async function refrescar(){ await abrirCinta(S.data.cinta.ID_CINTA, true); recargarInit().catch(()=>{}); }
+
+function tramosActivos(){ return S.data.tramos.filter(t=>t.ESTADO!=='REEMPLAZADO'); }
+function largoDe(nTramo){ const t=tramosActivos().find(x=>+x.N_TRAMO===+nTramo); return t? n(t.METROS) : null; }
+function hallVisibles(){ return S.data.hallazgos.filter(h=> S.mostrarCerrados || h.ESTADO!=='CERRADO'); }
+
+function renderCinta(){
+  const {cinta:c, imagen} = S.data;
+  const tr=tramosActivos(), hs=hallVisibles();
+  const L=S.init.logos, ed=puedeEditar();
+  let nPol=2; for(let p=6;p>=1;p--){ if(String(c['POLEA_'+p+'_MM']||'')!==''){ nPol=Math.max(2,p); break; } }
+  const fila=(lab,val)=>`<tr><td class="lab">${esc(lab)}</td><td class="val">${esc(val===null||val===undefined?'':val)}</td></tr>`;
+  const gr=t=>`<tr><td class="gr" colspan="2">${t}</td></tr>`;
+  let poleas=''; for(let p=1;p<=nPol;p++) poleas+=fila(`Diámetro Polea ${p} (mm)`, c['POLEA_'+p+'_MM']);
+  const total=tr.reduce((a,t)=>a+(n(t.METROS)||0),0);
+  const minFilas=5;
+  const filasVacias=Math.max(0, minFilas-hs.length);
+
+  $('#view').innerHTML = `
+  <div class="toolbar no-print">
+    <button class="btn" id="bVolver">← Cintas</button>
+    <span class="titulo">${esc(c.CODIGO)}</span>
+    ${ed?`<button class="btn" id="bFicha">✎ Ficha técnica</button>
+    <button class="btn" id="bTramos">⇄ Tramos / cambios</button>
+    <button class="btn pri" id="bNuevoH">＋ Nuevo hallazgo</button>`:''}
+    <label class="pill ${S.mostrarCerrados?'on':''}" style="cursor:pointer"><input type="checkbox" id="chkCerr" ${S.mostrarCerrados?'checked':''} style="display:none">Mostrar cerrados</label>
+    <span class="sp" style="flex:1"></span>
+    <button class="btn" id="bPrint">🖨 Imprimir</button>
+    <button class="btn pri" id="bInforme">📄 Informe PDF</button>
+  </div>
+
+  <div class="hoja">
+    <div class="hoja-tit">
+      <div class="izq">${L.izq?`<img src="${L.izq}">`:''}</div>
+      <h2>${esc(c.CODIGO)}</h2>
+      <div class="der">${L.der?`<img src="${L.der}">`:''}</div>
+    </div>
+    <div class="cab-grid">
+      <table class="x">
+        ${gr('Fechas relevantes')}
+        ${fila('Fecha actualización Mapeo', fmtF(c.FECHA_ACTUALIZACION))}
+        ${fila('Último Cambio', fmtF(c.ULTIMO_CAMBIO))}
+        ${gr('Datos Técnicos')}
+        ${fila('Tipo de Carcaza', c.TIPO_CARCAZA)}${fila('Marca Fabricante', c.MARCA)}${fila('Tipo de Cinta Transportadora', c.TIPO_CINTA)}
+        ${fila('Código Cinta', c.CODIGO_CINTA)}${fila('Ubicación Técnica', c.UBICACION_TECNICA)}${fila('Modelo de Cubierta DIN', c.MODELO_CUBIERTA)}
+        ${gr('Medidas Relevantes')}
+        ${poleas}
+        ${fila('Distancia de recorrido Carro (mm)', c.RECORRIDO_CARRO_MM)}${fila('Tensado (mm)', c.TENSADO_MM)}${fila('Destensado (mm)', c.DESTENSADO_MM)}
+      </table>
+      <table class="x">
+        ${gr('Información Cinta')}
+        ${fila('Espesor de Cubierta de Carga [mm]', c.ESP_CARGA_MM)}${fila('Espesor de Cubierta de Retorno [mm]', c.ESP_RETORNO_MM)}
+        ${fila('Espesor Total de la Cinta [mm]', c.ESP_TOTAL_MM)}${fila('Cantidad cable o Telas', c.CANT_CABLES_TELAS)}
+        ${fila('Diámetro del cable', c.DIAM_CABLE)}${fila('Cantidad Empalmes', c.CANT_EMPALMES)}
+        ${fila('Largo Empalme (mm)', c.LARGO_EMPALME_MM)}${fila('Distancia Entre Empalmes', c.DIST_ENTRE_EMPALMES)}
+        ${fila('Ancho pulg', c.ANCHO_PULG)}${fila('Velocidad (m/s)', c.VELOCIDAD_MS)}${fila('Tensión (PIW)', c.TENSION_PIW)}
+      </table>
+      <table class="x">
+        <tr><td class="gr" colspan="2">Medidas de Tramos [mt]</td><td class="gr" colspan="2">Inserción de Tramo</td></tr>
+        <tr><th>ID Tramo</th><th>Metros</th><th>Fecha</th><th>Medida Tramo</th></tr>
+        ${tr.map(t=>`<tr><td class="lab" style="width:auto">Tramo ${esc(t.N_TRAMO)}</td><td class="val">${fmtN(t.METROS)}</td><td class="val">${fmtF(t.FECHA_INSERCION)}</td><td class="val">${fmtN(t.MEDIDA_INSERTADO_M)}</td></tr>`).join('')}
+        <tr><td class="lab" style="width:auto">Largo total (mt)</td><td class="val">${fmtN(total)}</td><td colspan="2" style="border:0"></td></tr>
+      </table>
+      <div>
+        ${imagen?`<img class="img-cinta" src="${imagen}" alt="Cinta">`:`<div class="img-vacia">Sin imagen de la cinta${ed?'<br><small>Use “Ficha técnica” para cargar una</small>':''}</div>`}
+      </div>
+    </div>
+  </div>
+
+  <div class="hoja">
+    <h3 class="sec-tit">DETALLE DE HALLAZGOS</h3>
+    <div class="scroll-x">
+    <table class="hall">
+      <thead>
+        <tr><th rowspan="2">Ubicación en tramo</th><th rowspan="2">N° ID</th><th rowspan="2">Detalle daño</th><th rowspan="2">FECHA HALLAZGO</th>
+          <th colspan="2">Dimensiones del Daño</th><th rowspan="2">Carcaza Comprometida</th><th rowspan="2">Distancia del Canto</th>
+          <th rowspan="2">Distancia del empalme</th><th rowspan="2">Tipo de reparación</th><th rowspan="2">LONGITUD DEL TRAMO EN METROS (mt)</th>
+          <th rowspan="2">Criticidad</th><th rowspan="2" class="no-print">📷</th></tr>
+        <tr><th>Largo</th><th>Ancho</th></tr>
+      </thead>
+      <tbody>
+        ${hs.map(h=>{ const esT=h.UBICACION_TIPO!=='EMPALME'; const lt=esT?largoDe(h.UBICACION_N):null; const cc=critColor(h.CRITICIDAD);
+          return `<tr class="dato ${h.ESTADO==='CERRADO'?'cerrado':''}" data-id="${esc(h.ID_HALLAZGO)}">
+          <td class="ubi">${esT?'Tramo':'Empalme'} ${esc(h.UBICACION_N)}</td><td>${esc(h.N_ID)}</td><td class="det">${esc(h.DETALLE)}</td>
+          <td>${fmtF(h.FECHA_HALLAZGO)}</td><td>${esc(h.LARGO)}</td><td>${esc(h.ANCHO)}</td><td>${esc(h.CARCAZA)}</td><td>${esc(h.DIST_CANTO)}</td>
+          <td>${esc(h.DIST_EMPALME)}</td><td>${esc(h.TIPO_REPARACION)}</td><td>${esT?(lt!==null?fmtN(lt)+' mt':''):'N/A'}</td>
+          <td class="crit" style="background:${cc};color:${txtColor(cc)}">${esc(h.CRITICIDAD)}</td>
+          <td class="no-print"><span class="foto-ind">${h.nFotos?('📷 '+h.nFotos):''}</span></td></tr>`; }).join('')}
+        ${Array.from({length:filasVacias}).map(()=>`<tr><td class="ubi">N/A</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="no-print"></td></tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div class="leyenda">${(S.init.listas.CRITICIDAD||[]).map(x=>`<span><i style="background:${x.color}"></i>${esc(x.valor)}</span>`).join('')}
+      <span class="muted">· Banda: fila superior = lado izquierdo, centro, fila inferior = lado derecho · Clic en una marca para abrir el hallazgo</span></div>
+
+    <div class="giro"><span>Sentido de giro</span><span class="flecha">${String(c.SENTIDO_GIRO||'IZQUIERDA').toUpperCase()==='DERECHA'?'━━━━━━━━━━━━━━►':'◄━━━━━━━━━━━━━━'}</span></div>
+    <div class="scroll-x">${tr.map(t=>htmlTramo(t, hs)).join('') || '<div class="vacio">La cinta no tiene tramos. Agréguelos en “Tramos / cambios”.</div>'}</div>
+  </div>
+
+  <details class="hist"><summary>Historial de cambios (${S.data.historial.length})</summary>
+    <div class="hist-l">${S.data.historial.map(h=>`<div><b>${esc(h.FECHA)}</b> · ${esc(h.USUARIO)} · <b>${esc(h.ACCION)}</b> ${esc(h.ENTIDAD)} — ${esc(h.DETALLE)}</div>`).join('') || '<div class="muted">Sin registros</div>'}</div>
+  </details>`;
+
+  $('#bVolver').onclick = () => { S.data=null; history.back(); renderInicio(); };
+  $('#bPrint').onclick = () => window.print();
+  $('#bInforme').onclick = modalInforme;
+  $('#chkCerr').onchange = e => { S.mostrarCerrados=e.target.checked; renderCinta(); };
+  if(ed){ $('#bFicha').onclick = () => modalFicha(c); $('#bTramos').onclick = modalTramos; $('#bNuevoH').onclick = () => modalHallazgo(null); }
+  $$('tr.dato').forEach(r => r.onclick = () => modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===r.dataset.id)));
+  $$('[data-hid]').forEach(m => m.addEventListener('click', ev => { ev.stopPropagation(); modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===m.dataset.hid)); }));
+}
+
+
+function htmlTramo(t, hs){
+  const L=n(t.METROS);
+  const empH = hs.filter(h=>h.UBICACION_TIPO==='EMPALME' && +h.UBICACION_N===+t.N_TRAMO);
+  const tramoH = hs.filter(h=>h.UBICACION_TIPO!=='EMPALME' && +h.UBICACION_N===+t.N_TRAMO);
+  const peorEmp = empH.sort((a,b)=>critPeso(b.CRITICIDAD)-critPeso(a.CRITICIDAD))[0];
+  const secc = L? (L/SECC) : null;
+  const med = n(t.MEDIDA_INSERTADO_M);
+  return `<div class="tramo">
+   <table>
+    <colgroup><col style="width:90px">${'<col>'.repeat(SECC)}</colgroup>
+    <tr><th rowspan="2">EMPALME</th>${Array.from({length:SECC},(_,i)=>`<th>SECCION ${i+1} [mt]</th>`).join('')}</tr>
+    <tr>${Array.from({length:SECC},()=>`<th>${secc!==null?secc.toFixed(2):'—'}</th>`).join('')}</tr>
+    <tr><td class="emp" ${peorEmp?`style="background:${critColor(peorEmp.CRITICIDAD)};color:${txtColor(critColor(peorEmp.CRITICIDAD))};cursor:pointer" data-hid="${esc(peorEmp.ID_HALLAZGO)}" title="${esc(empH.map(h=>'ID '+h.N_ID+': '+h.DETALLE).join('\n'))}"`:''}>
+          ${esc(t.N_TRAMO)}${empH.length?`<br><small>ID ${empH.map(h=>h.N_ID).join(',')}</small>`:''}</td>
+        <td class="banda" colspan="${SECC}">${svgBanda(L, tramoH, {})}</td></tr>
+    <tr><td class="ins">Tramo insertado</td><td class="insbar" colspan="${SECC}">${barraInsercion(L, med, t.FECHA_INSERCION)}</td></tr>
+   </table>
+   ${!L?'<div class="muted" style="font-size:12px">⚠ Largo del tramo no definido: las marcas se muestran al inicio. Complete los metros en “Tramos”.</div>':''}
+  </div>`;
+}
+function critPeso(v){ return ({CRITICA:5,MEDIA:4,LEVE:3,REPARADA:2,BUENA:1})[v]||0; }
+const BANDAS = { IZQUIERDO:[0], CENTRO:[1], DERECHO:[2], AMBOS:[0,2], TRANSVERSAL:[0,1,2] };
+
+
+function svgBanda(L, hs, opts){
+  const W=1500, H=78, top=4, bh=(H-2*top)/3;
+  let s = `<div style="position:relative">
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;width:100%;height:${opts.alto||78}px">
+    <rect x="0" y="0" width="${W}" height="${H}" fill="#000"/>
+    <line x1="0" y1="${top}" x2="${W}" y2="${top}" stroke="#FFC000" stroke-width="3"/>
+    <line x1="0" y1="${H-top}" x2="${W}" y2="${H-top}" stroke="#FFC000" stroke-width="3"/>
+    ${Array.from({length:SECC-1},(_,i)=>`<line x1="${(i+1)*100}" y1="${top}" x2="${(i+1)*100}" y2="${H-top}" stroke="#333" stroke-width="1" stroke-dasharray="4 4"/>`).join('')}
+    <line x1="0" y1="${top+bh}" x2="${W}" y2="${top+bh}" stroke="#222" stroke-width="1"/>
+    <line x1="0" y1="${top+2*bh}" x2="${W}" y2="${top+2*bh}" stroke="#222" stroke-width="1"/>`;
+  const etiquetas=[];
+  const lista = hs.slice();
+  if(opts.preview) lista.push(Object.assign({_prev:true}, opts.preview));
+  lista.forEach(h=>{
+    const pos=n(h.POS_M)||0, ext=n(h.EXT_M)||0;
+    const x = L ? Math.max(0, Math.min(W, pos/L*W)) : 0;
+    let w = L ? ext/L*W : 0; w = Math.max(w, 7); if(x+w>W) w=Math.max(7, W-x);
+    const col = h._prev ? '#00E5FF' : critColor(h.CRITICIDAD);
+    const filas = BANDAS[h.LADO] || [1];
+    s += `<g class="mk" ${h._prev?'':`data-hid="${esc(h.ID_HALLAZGO)}"`}><title>ID ${esc(h.N_ID||'nuevo')} · ${esc(h.DETALLE||'')} · ${esc(h.CRITICIDAD||'')}\nPos: ${fmtN(pos)} m · Largo: ${fmtN(ext,3)} m · ${esc(h.LADO||'')}</title>`;
+    filas.forEach(f=>{ s+=`<rect x="${x}" y="${top+f*bh+2}" width="${w}" height="${bh-4}" fill="${col}" stroke="${h._prev?'#fff':'#fff'}" stroke-width="${h._prev?2:1}"/>`; });
+    s += `</g>`;
+    etiquetas.push({x:x/W*100, f:filas[0], id:h.N_ID||'＋', hid:h._prev?'':h.ID_HALLAZGO, col});
+  });
+  s += `</svg>`;
+  etiquetas.forEach(e=>{
+    const topPx = (top + e.f*bh) * ((opts.alto||78)/H);
+    s += `<span ${e.hid?`data-hid="${esc(e.hid)}"`:''} style="position:absolute;left:calc(${Math.min(e.x,97)}% + 2px);top:${topPx-1}px;background:#fff;border:2px solid ${e.col};border-radius:9px;font:700 10px/1 Calibri,Arial;padding:2px 5px;cursor:pointer;white-space:nowrap;pointer-events:${e.hid?'auto':'none'}">ID ${esc(e.id)}</span>`;
+  });
+  return s + `</div>`;
+}
+function barraInsercion(L, med, fecha){
+  if(!med && !fecha) return '';
+  const w = (L && med) ? Math.min(100, med/L*100) : 0;
+  return `<div style="position:relative;height:20px">${w?`<div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:#BFBFBF"></div>`:''}
+    <span style="position:absolute;left:6px;top:3px;font-size:11px;font-weight:700">${med?'Insertado ':'Inserción '}${fmtF(fecha)}${med?' · '+fmtN(med)+' m':''}</span></div>`;
+}
+
+
+function modal({titulo, cuerpo, botones=[], sm=false, onOpen, izquierda}){
+  const root=$('#modalRoot');
+  const bg=document.createElement('div'); bg.className='modal-bg';
+  bg.innerHTML = `<div class="modal ${sm?'sm':''}"><header><h3>${titulo}</h3><button data-x>×</button></header>
+    <div class="cont">${cuerpo}</div><footer>${izquierda?'<span class="izq"></span>':''}</footer></div>`;
+  root.appendChild(bg);
+  const cerrar=()=>bg.remove();
+  bg.querySelector('[data-x]').onclick=cerrar;
+  bg.addEventListener('mousedown', e=>{ if(e.target===bg) bg._down=true; });
+  bg.addEventListener('mouseup', e=>{ if(e.target===bg && bg._down) cerrar(); bg._down=false; });
+  const foot=bg.querySelector('footer');
+  if(izquierda){ const sp=foot.querySelector('.izq'); izquierda.forEach(b=>sp.appendChild(boton(b,cerrar))); }
+  botones.forEach(b=>foot.appendChild(boton(b,cerrar)));
+  if(onOpen) onOpen(bg, cerrar);
+  return {bg, cerrar};
+}
+function boton(b, cerrar){
+  const e=document.createElement('button'); e.className='btn'+(b.pri?' pri':'')+(b.peligro?' peligro':''); e.textContent=b.txt;
+  e.onclick=()=> b.fn ? b.fn(cerrar, e) : cerrar(); return e;
+}
+function leerForm(root){
+  const o={}; $$('[name]', root).forEach(i=>{ o[i.name] = i.type==='checkbox' ? i.checked : i.value.trim(); }); return o;
+}
+
+
+function modalFicha(c){
+  const nuevo=!c; c=c||{SENTIDO_GIRO:'IZQUIERDA', AREA:S.init.config.AREA_NOMBRE};
+  const campo=(k,lab,cls='',tipo='text',extra='')=>`<div class="${cls}"><label>${lab}</label><input name="${k}" type="${tipo}" value="${esc(tipo==='date'?String(c[k]||'').substring(0,10):c[k])}" ${extra}></div>`;
+  const sel=(k,lab,lista,cls='')=>`<div class="${cls}"><label>${lab}</label><select name="${k}">${opciones(lista,c[k],true)}</select></div>`;
+  let poleas=''; for(let p=1;p<=6;p++) poleas+=campo('POLEA_'+p+'_MM',`Diámetro polea ${p} (mm)`);
+  const cuerpo=`<div class="form">
+    <fieldset><legend>Identificación</legend><div class="sub-grid">
+      ${campo('CODIGO','Código (ej: CT-110-FE-01)', '', 'text', nuevo?'required':'')}
+      ${campo('AREA','Área')}
+      ${campo('FECHA_ACTUALIZACION','Fecha actualización mapeo','','date')}
+      ${campo('ULTIMO_CAMBIO','Último cambio')}
+      ${sel('SENTIDO_GIRO','Sentido de giro','SENTIDO_GIRO')}
+      ${nuevo?campo('_largoInicial','Largo tramo 1 (m)','','number','step="0.01"'):''}
+    </div></fieldset>
+    <fieldset><legend>Datos técnicos</legend><div class="sub-grid">
+      ${sel('TIPO_CARCAZA','Tipo de carcaza','TIPO_CARCAZA')}${campo('MARCA','Marca fabricante')}${campo('TIPO_CINTA','Tipo de cinta transportadora')}
+      ${campo('CODIGO_CINTA','Código cinta')}${campo('UBICACION_TECNICA','Ubicación técnica','c2')}${campo('MODELO_CUBIERTA','Modelo de cubierta DIN')}
+    </div></fieldset>
+    <fieldset><legend>Información cinta</legend><div class="sub-grid">
+      ${campo('ESP_CARGA_MM','Espesor cubierta carga [mm]')}${campo('ESP_RETORNO_MM','Espesor cubierta retorno [mm]')}${campo('ESP_TOTAL_MM','Espesor total [mm]')}
+      ${campo('CANT_CABLES_TELAS','Cantidad cable o telas')}${campo('DIAM_CABLE','Diámetro del cable')}${campo('CANT_EMPALMES','Cantidad empalmes')}
+      ${campo('LARGO_EMPALME_MM','Largo empalme (mm)')}${campo('DIST_ENTRE_EMPALMES','Distancia entre empalmes')}${campo('ANCHO_PULG','Ancho (pulg)')}
+      ${campo('VELOCIDAD_MS','Velocidad (m/s)')}${campo('TENSION_PIW','Tensión (PIW)')}
+    </div></fieldset>
+    <fieldset><legend>Medidas relevantes</legend><div class="sub-grid">
+      ${poleas}${campo('RECORRIDO_CARRO_MM','Recorrido carro (mm)')}${campo('TENSADO_MM','Tensado (mm)')}${campo('DESTENSADO_MM','Destensado (mm)')}
+    </div></fieldset>
+    ${nuevo?'':`<fieldset><legend>Imagen de la cinta</legend>
+      <div class="drop" id="dropImg">📷 Toque o arrastre una imagen para reemplazar la imagen de la cinta</div>
+      <input type="file" id="fileImg" accept="image/&#42;" style="display:none"></fieldset>`}
+    <div class="c4"><label>Observaciones</label><textarea name="OBS" rows="2">${esc(c.OBS)}</textarea></div>
+  </div>`;
+  modal({ titulo: nuevo?'Nueva cinta':'Ficha técnica – '+esc(c.CODIGO), cuerpo,
+    onOpen: (bg)=>{
+      if(nuevo) return;
+      const drop=$('#dropImg',bg), inp=$('#fileImg',bg);
+      drop.onclick=()=>inp.click();
+      ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on');}));
+      ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('on');}));
+      drop.addEventListener('drop', e=>subirImgCinta(e.dataTransfer.files[0]));
+      inp.onchange=()=>subirImgCinta(inp.files[0]);
+    },
+    botones:[{txt:'Cancelar'},{txt:'Guardar', pri:true, fn: async (cerrar, btn)=>{
+      const o=leerForm(btn.closest('.modal-bg'));
+      if(!o.CODIGO){ toast('Ingrese el código de la cinta', true); return; }
+      o.CODIGO=o.CODIGO.toUpperCase();
+      if(!nuevo) o.ID_CINTA=c.ID_CINTA; else o._nuevo=true;
+      const id=await llamar('apiSaveCinta',[o,S.nombre],'Guardando ficha…');
+      cerrar(); toast('Ficha guardada');
+      await recargarInit(); abrirCinta(id, !nuevo);
+    }}]
+  });
+}
+async function subirImgCinta(file){
+  if(!file) return;
+  const data=await redimensionar(file,1000,0.85);
+  await llamar('apiUploadImagenCinta',[S.data.cinta.ID_CINTA,data,S.nombre],'Subiendo imagen…');
+  toast('Imagen actualizada'); refrescar();
+}
+
+
+function modalTramos(){
+  const c=S.data.cinta;
+  let verReemp=false;
+  const pintar=(bg)=>{
+    const lista=S.data.tramos.filter(t=>verReemp || t.ESTADO!=='REEMPLAZADO');
+    $('#tbTramos',bg).innerHTML = lista.map(t=>`<tr data-id="${esc(t.ID_TRAMO)}" class="${t.ESTADO==='REEMPLAZADO'?'reemp':''}">
+      <td><input name="N_TRAMO" type="number" value="${esc(t.N_TRAMO)}" style="width:60px"></td>
+      <td><input name="METROS" type="number" step="0.01" value="${esc(t.METROS)}"></td>
+      <td><input name="FECHA_INSERCION" type="date" value="${esc(String(t.FECHA_INSERCION||'').substring(0,10))}"></td>
+      <td><input name="MEDIDA_INSERTADO_M" type="number" step="0.01" value="${esc(t.MEDIDA_INSERTADO_M)}"></td>
+      <td><input name="OBS" value="${esc(t.OBS)}"></td>
+      <td style="white-space:nowrap;text-align:center">${t.ESTADO==='REEMPLAZADO'?'<small>Reemplazado</small>':`
+        <button class="btn sm" data-a="g" title="Guardar">💾</button>
+        <button class="btn sm" data-a="c" title="Registrar cambio de tramo">⇄</button>
+        <button class="btn sm peligro" data-a="d" title="Eliminar">🗑</button>`}</td></tr>`).join('') ||
+      '<tr><td colspan="6" class="muted" style="text-align:center;padding:10px">Sin tramos</td></tr>';
+    $$('#tbTramos button',bg).forEach(b=>b.onclick=async()=>{
+      const tr=b.closest('tr'), id=tr.dataset.id, t=S.data.tramos.find(x=>x.ID_TRAMO===id);
+      const v=leerForm(tr);
+      if(b.dataset.a==='g'){ await llamar('apiSaveTramo',[Object.assign({},t,v),S.nombre],'Guardando tramo…'); toast('Tramo guardado'); await refrescar(); pintar(bg); }
+      if(b.dataset.a==='d'){ if(!confirm('¿Eliminar el tramo '+t.N_TRAMO+'? (Para un reemplazo físico use ⇄ “cambio de tramo”, que conserva el historial)')) return;
+        await llamar('apiDeleteTramo',[id,S.nombre],'Eliminando…'); await refrescar(); pintar(bg); }
+      if(b.dataset.a==='c') modalCambioTramo(t, ()=>pintar(bg));
+    });
+  };
+  modal({ titulo:'Tramos – '+esc(c.CODIGO), cuerpo:`
+    <p class="muted" style="margin-top:0">Cada tramo se dibuja como un bloque de ${SECC} secciones (largo/${SECC}). Use ⇄ para registrar un <b>cambio / inserción de tramo</b>: el tramo anterior queda en historial y, si corresponde, se cierran sus hallazgos.</p>
+    <div class="scroll-x"><table class="edit"><thead><tr><th>N°</th><th>Metros</th><th>Fecha inserción</th><th>Medida tramo insertado (m)</th><th>Observación</th><th></th></tr></thead>
+    <tbody id="tbTramos"></tbody></table></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn pri" id="bAddT">＋ Agregar tramo</button>
+      <label style="font-size:13px"><input type="checkbox" id="chkReemp"> Ver tramos reemplazados</label>
+    </div>`,
+    onOpen:(bg)=>{
+      pintar(bg);
+      $('#chkReemp',bg).onchange=e=>{ verReemp=e.target.checked; pintar(bg); };
+      $('#bAddT',bg).onclick=async()=>{
+        const max=tramosActivos().reduce((a,t)=>Math.max(a,+t.N_TRAMO||0),0);
+        const m=prompt('Largo del tramo '+(max+1)+' (m):',''); if(m===null) return;
+        await llamar('apiSaveTramo',[{ID_CINTA:c.ID_CINTA,N_TRAMO:max+1,METROS:m},S.nombre],'Agregando tramo…');
+        await refrescar(); pintar(bg);
+      };
+    },
+    botones:[{txt:'Cerrar', pri:true}]
+  });
+}
+function modalCambioTramo(t, despues){
+  const n0=S.data.hallazgos.filter(h=>h.UBICACION_TIPO!=='EMPALME' && +h.UBICACION_N===+t.N_TRAMO && h.ESTADO!=='CERRADO').length;
+  modal({ titulo:'Cambio de tramo '+esc(t.N_TRAMO), sm:true, cuerpo:`<div class="form">
+    <div class="c2"><label>Fecha de inserción</label><input name="FECHA_INSERCION" type="date" value="${hoy()}"></div>
+    <div class="c2"><label>Nuevo largo del tramo (m)</label><input name="METROS" type="number" step="0.01" value="${esc(t.METROS)}"></div>
+    <div class="c2"><label>Medida del tramo insertado (m)</label><input name="MEDIDA_INSERTADO_M" type="number" step="0.01"></div>
+    <div class="c4"><label>Observación</label><input name="OBS"></div>
+    <div class="c4"><label style="text-transform:none;font-weight:400"><input type="checkbox" name="cerrarHallazgos" ${S.init.config.CERRAR_HALLAZGOS_EN_CAMBIO_TRAMO==='SI'?'checked':''} style="width:auto">
+      Cerrar los ${n0} hallazgo(s) abiertos del tramo ${esc(t.N_TRAMO)}</label></div></div>`,
+    botones:[{txt:'Cancelar'},{txt:'Registrar cambio', pri:true, fn: async(cerrar, btn)=>{
+      const o=leerForm(btn.closest('.modal-bg')); o.ID_TRAMO=t.ID_TRAMO;
+      const r=await llamar('apiCambioTramo',[o,S.nombre],'Registrando cambio…');
+      cerrar(); toast('Cambio registrado'+(r.cerrados?' · '+r.cerrados+' hallazgo(s) cerrados':''));
+      await refrescar(); if(despues) despues();
+    }}]
+  });
+}
+
+
+function modalHallazgo(h){
+  const nuevo=!h, ed = nuevo ? puedeEditar() : esAdmin();
+  const tr=tramosActivos();
+  h = h || { UBICACION_TIPO:'TRAMO', UBICACION_N:(tr[0]||{}).N_TRAMO||1, FECHA_HALLAZGO:hoy(), CRITICIDAD:'LEVE',
+             TIPO_REPARACION:'SIN REPARACIÓN', ESTADO:'ABIERTO', LADO:'CENTRO', POS_M:'', EXT_M:'' };
+  const pendientes=[];
+  const ro = ed ? '' : 'disabled';
+  const dl = `<datalist id="dlDanos">${(S.init.listas.TIPO_DANO||[]).map(x=>`<option value="${esc(x.valor)}">`).join('')}</datalist>
+              <datalist id="dlRep">${(S.init.listas.TIPO_REPARACION||[]).map(x=>`<option value="${esc(x.valor)}">`).join('')}</datalist>`;
+  const cuerpo=`${dl}${(!nuevo && !ed)?'<div style="background:#FFF4CE;border:1px solid #FFC000;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:13px">🔒 Solo lectura: únicamente un <b>ADMINISTRADOR</b> puede modificar o eliminar este hallazgo.</div>':''}<div class="form">
+    <div><label>Ubicación</label><select name="UBICACION_TIPO" ${ro}>${opciones('UBICACION_TIPO',h.UBICACION_TIPO)}</select></div>
+    <div><label>N° tramo / empalme</label><select name="UBICACION_N" ${ro}>${tr.map(t=>`<option value="${t.N_TRAMO}" ${+t.N_TRAMO===+h.UBICACION_N?'selected':''}>${t.N_TRAMO} (${fmtN(t.METROS)} m)</option>`).join('')}</select></div>
+    <div><label>N° ID</label><input name="N_ID" type="number" value="${esc(h.N_ID)}" placeholder="auto" ${ro}></div>
+    <div><label>Fecha hallazgo</label><input name="FECHA_HALLAZGO" type="date" value="${esc(String(h.FECHA_HALLAZGO||'').substring(0,10))}" ${ro}></div>
+    <div class="c4"><label>Detalle daño</label><input name="DETALLE" list="dlDanos" value="${esc(h.DETALLE)}" placeholder="Ej: Corte transversal canto derecho" ${ro}></div>
+    <div><label>Largo</label><input name="LARGO" value="${esc(h.LARGO)}" placeholder="Ej: 200 mm / 13 mt" ${ro}></div>
+    <div><label>Ancho</label><input name="ANCHO" value="${esc(h.ANCHO)}" placeholder="Ej: 50 mm" ${ro}></div>
+    <div><label>Carcaza comprometida</label><input name="CARCAZA" value="${esc(h.CARCAZA)}" placeholder="Ej: 04 cables / 01 expuesta" ${ro}></div>
+    <div><label>Distancia del canto</label><input name="DIST_CANTO" value="${esc(h.DIST_CANTO)}" placeholder="Ej: 336 mm / N/A" ${ro}></div>
+    <div><label>Distancia del empalme</label><input name="DIST_EMPALME" value="${esc(h.DIST_EMPALME)}" placeholder="Ej: 119 mt" ${ro}></div>
+    <div><label>Tipo de reparación</label><input name="TIPO_REPARACION" list="dlRep" value="${esc(h.TIPO_REPARACION)}" ${ro}></div>
+    <div><label>Criticidad</label><select name="CRITICIDAD" ${ro}>${opciones('CRITICIDAD',h.CRITICIDAD)}</select></div>
+    <div><label>Estado</label><select name="ESTADO" ${ro}>${opciones('ESTADO_HALLAZGO',h.ESTADO)}</select></div>
+    <fieldset><legend>Ubicación en el diagrama</legend>
+      <div class="sub-grid">
+        <div><label>Posición desde empalme (m)</label><input name="POS_M" type="number" step="0.01" value="${esc(h.POS_M)}" ${ro}></div>
+        <div><label>Largo afectado (m)</label><input name="EXT_M" type="number" step="0.001" value="${esc(h.EXT_M)}" ${ro}></div>
+        <div><label>Lado</label><select name="LADO" ${ro}>${opciones('LADO',h.LADO)}</select></div>
+        <div><label>Longitud del tramo</label><input id="lonTramo" readonly></div>
+      </div>
+      <div id="picker" class="picker" style="margin-top:8px"></div>
+      <div class="picker-info">${ed?'Toque la banda para ubicar el daño (posición y lado). Los campos “Distancia del empalme” y “Largo” completan la posición automáticamente.':''}</div>
+    </fieldset>
+    <div class="c4"><label>Observaciones</label><textarea name="OBS" rows="2" ${ro}>${esc(h.OBS)}</textarea></div>
+    <fieldset><legend>Apoyo fotográfico</legend>
+      ${ed?`<div class="drop" id="dropF">📷 Tomar foto / seleccionar imágenes (puede elegir varias) — también puede arrastrarlas aquí</div>
+      <input type="file" id="fileF" accept="image/&#42;" multiple style="display:none">`:''}
+      <div class="fotos" id="gal" style="margin-top:10px">${nuevo?'':'<div class="muted">Cargando fotos…</div>'}</div>
+    </fieldset>
+  </div>`;
+
+  const m = modal({ titulo: nuevo?'Nuevo hallazgo – '+esc(S.data.cinta.CODIGO) : `Hallazgo ID ${esc(h.N_ID)} – ${esc(S.data.cinta.CODIGO)}`, cuerpo,
+    izquierda: (!nuevo && ed) ? [{txt:'🗑 Eliminar', peligro:true, fn: async(cerrar)=>{
+      if(!confirm('¿Eliminar el hallazgo ID '+h.N_ID+' y sus fotos? (Si fue reparado, mejor márquelo como CERRADO o REPARADA)')) return;
+      await llamar('apiDeleteHallazgo',[h.ID_HALLAZGO,S.nombre],'Eliminando…'); cerrar(); toast('Hallazgo eliminado'); refrescar();
+    }}] : null,
+    botones: ed ? [{txt:'Cancelar'},{txt:'Guardar', pri:true, fn: guardar}] : [{txt:'Cerrar', pri:true}],
+    onOpen: (bg)=>{
+      const f=k=>$(`[name="${k}"]`,bg);
+      let posManual = h.POS_M!==''&&h.POS_M!==null, extManual = h.EXT_M!==''&&h.EXT_M!==null, ladoManual = !nuevo;
+      const actual=()=>{ const o=leerForm(bg); o.ID_HALLAZGO=h.ID_HALLAZGO; return o; };
+      const pintarPicker=()=>{
+        const o=actual(); const L=largoDe(o.UBICACION_N);
+        $('#lonTramo',bg).value = o.UBICACION_TIPO==='EMPALME' ? 'N/A (empalme)' : (L!==null? fmtN(L)+' mt' : 'sin dato');
+        if(o.UBICACION_TIPO==='EMPALME'){ $('#picker',bg).innerHTML='<div style="background:#fff;padding:10px;color:#555">Hallazgo en empalme '+esc(o.UBICACION_N)+': se marca en la celda EMPALME del diagrama.</div>'; return; }
+        const otros=S.data.hallazgos.filter(x=>x.ID_HALLAZGO!==h.ID_HALLAZGO && x.UBICACION_TIPO!=='EMPALME' && +x.UBICACION_N===+o.UBICACION_N && x.ESTADO!=='CERRADO');
+        $('#picker',bg).innerHTML = svgBanda(L, otros, {preview:o, alto:90});
+      };
+      const auto=()=>{
+        const o=actual(); const L=largoDe(o.UBICACION_N);
+        if(!posManual){ const p=aMetros(o.DIST_EMPALME, 0); f('POS_M').value = p!==null ? Math.round(p*100)/100 : ''; }
+        if(!extManual){ const e=aMetros(o.LARGO, L); f('EXT_M').value = e!==null ? Math.round(Math.min(e, L||e)*1000)/1000 : ''; }
+        if(!ladoManual){ f('LADO').value = ladoDesdeTexto(o.DETALLE); }
+        pintarPicker();
+      };
+      if(ed){
+        ['DIST_EMPALME','LARGO','DETALLE','UBICACION_N','UBICACION_TIPO'].forEach(k=>f(k).addEventListener('input',auto));
+        ['UBICACION_N','UBICACION_TIPO','CRITICIDAD'].forEach(k=>f(k).addEventListener('change',auto));
+        f('POS_M').addEventListener('input',()=>{posManual=true;pintarPicker();});
+        f('EXT_M').addEventListener('input',()=>{extManual=true;pintarPicker();});
+        f('LADO').addEventListener('change',()=>{ladoManual=true;pintarPicker();});
+        $('#picker',bg).addEventListener('click', ev=>{
+          const o=actual(); if(o.UBICACION_TIPO==='EMPALME') return;
+          const svg=$('#picker svg',bg); if(!svg) return;
+          const r=svg.getBoundingClientRect(); const fx=(ev.clientX-r.left)/r.width, fy=(ev.clientY-r.top)/r.height;
+          const L=largoDe(o.UBICACION_N);
+          if(L){ f('POS_M').value = Math.round(fx*L*100)/100; posManual=true; }
+          else toast('Defina el largo del tramo para ubicar por posición', true);
+          f('LADO').value = fy<0.36?'IZQUIERDO':(fy>0.64?'DERECHO':'CENTRO'); ladoManual=true;
+          pintarPicker();
+        });
+
+        const drop=$('#dropF',bg), inp=$('#fileF',bg);
+        drop.onclick=()=>inp.click();
+        ['dragover','dragenter'].forEach(e=>drop.addEventListener(e,x=>{x.preventDefault();drop.classList.add('on');}));
+        ['dragleave','drop'].forEach(e=>drop.addEventListener(e,x=>{x.preventDefault();drop.classList.remove('on');}));
+        drop.addEventListener('drop', x=>agregarFotos(x.dataTransfer.files));
+        inp.onchange=()=>{ agregarFotos(inp.files); inp.value=''; };
+      }
+      pintarPicker();
+      async function agregarFotos(files){
+        for(const file of Array.from(files)){
+          if(String(file.type).indexOf('image')!==0) continue;
+          try{
+            const dataUrl=await redimensionar(file,1600,0.82), miniDataUrl=await redimensionar(file,900,0.75);
+            pendientes.push({dataUrl, miniDataUrl, nombre:file.name, descripcion:''});
+          }catch(e){ toast('No se pudo leer '+file.name, true); }
+        }
+        pintarGaleria();
+      }
+      bg._agregarFotos=agregarFotos;
+    }
+  });
+  const bg=m.bg;
+  let existentes=[];
+  function pintarGaleria(){
+    const g=$('#gal',bg);
+    g.innerHTML = existentes.map(fo=>`<div class="foto" data-f="${esc(fo.ID_FOTO)}">
+        <img src="${fo.mini||''}" data-full="${esc(fo.ID_FOTO)}" alt="">
+        ${ed?`<button class="x" data-del="${esc(fo.ID_FOTO)}" title="Eliminar">×</button>`:''}
+        <input value="${esc(fo.DESCRIPCION)}" placeholder="Descripción" data-desc="${esc(fo.ID_FOTO)}" ${ed?'':'readonly'}></div>`).join('')
+      + pendientes.map((p,i)=>`<div class="foto"><span class="pend">Pendiente</span><img src="${p.miniDataUrl}" alt="">
+        <button class="x" data-pdel="${i}">×</button><input value="${esc(p.descripcion)}" placeholder="Descripción" data-pdesc="${i}"></div>`).join('')
+      || '<div class="muted">Sin fotos</div>';
+    $$('[data-full]',g).forEach(im=>im.onclick=async()=>{ const full=await llamar('apiGetFotoFull',[im.dataset.full],'Abriendo foto…'); visor(full||im.src); });
+    $$('[data-del]',g).forEach(b=>b.onclick=async()=>{ if(!confirm('¿Eliminar la foto?')) return;
+      await llamar('apiDeleteFoto',[b.dataset.del,S.nombre],'Eliminando foto…'); existentes=existentes.filter(x=>x.ID_FOTO!==b.dataset.del); pintarGaleria(); h.nFotos=existentes.length; });
+    $$('[data-desc]',g).forEach(i=>i.onchange=()=>api('apiUpdateFoto',i.dataset.desc,i.value,S.nombre).then(()=>toast('Descripción guardada')).catch(e=>toast(e.message,true)));
+    $$('[data-pdel]',g).forEach(b=>b.onclick=()=>{ pendientes.splice(+b.dataset.pdel,1); pintarGaleria(); });
+    $$('[data-pdesc]',g).forEach(i=>i.oninput=()=>{ pendientes[+i.dataset.pdesc].descripcion=i.value; });
+  }
+  if(!nuevo){ api('apiGetFotos', h.ID_HALLAZGO).then(fs=>{ existentes=fs; pintarGaleria(); }).catch(e=>{ $('#gal',bg).innerHTML='<div class="muted">Error: '+esc(e.message)+'</div>'; }); }
+  else pintarGaleria();
+
+  async function guardar(cerrar, btn){
+    const o=leerForm(bg);
+    if(!o.DETALLE){ toast('Describa el daño (Detalle daño)', true); return; }
+    o.ID_CINTA=S.data.cinta.ID_CINTA; if(!nuevo) o.ID_HALLAZGO=h.ID_HALLAZGO;
+    btn.disabled=true;
+    try{
+      const id=await llamar('apiSaveHallazgo',[o,S.nombre],'Guardando hallazgo…');
+      for(let i=0;i<pendientes.length;i++){
+        await llamar('apiUploadFoto',[id,pendientes[i],S.nombre],`Subiendo foto ${i+1} de ${pendientes.length}…`);
+      }
+      cerrar(); toast('Hallazgo guardado'+(pendientes.length?` con ${pendientes.length} foto(s)`:'')); refrescar();
+    }catch(e){ btn.disabled=false; }
+  }
+}
+
+
+function modalInforme(){
+  const c=S.data.cinta;
+  modal({ titulo:'Informe de salida – '+esc(c.CODIGO), sm:true, cuerpo:`
+    <p>Se descargará el PDF de <b>${esc(c.CODIGO)}</b> con el formato de la planilla oficial:
+    ficha técnica, detalle de hallazgos y diagrama por tramo. No se guarda ningún archivo en Drive.</p>
+    <div class="form"><div class="c4"><label style="text-transform:none;font-weight:400"><input type="checkbox" id="chkFotos" style="width:auto"> Incluir registro fotográfico (páginas adicionales)</label></div></div>
+    <div id="resInf"></div>`,
+    botones:[{txt:'Cerrar'},{txt:'⬇ Descargar PDF', pri:true, fn: async(cerrar, btn)=>{
+      btn.disabled=true;
+      try{
+        const r=await llamar('apiDescargarPdf',[c.ID_CINTA,$('#chkFotos').checked,S.nombre],'Generando PDF… (puede tardar unos segundos)');
+        const url=descargarBase64(r.base64, r.nombre, 'application/pdf');
+        $('#resInf').innerHTML = `<p>✅ PDF listo. Si no se descargó solo, <a href="${url}" target="_blank" download="${esc(r.nombre)}">haga clic aquí</a>.</p>`;
+      }finally{ btn.disabled=false; }
+    }}]
+  });
+}
+
+function descargarBase64(b64, nombre, tipo){
+  const bin=atob(b64), bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([bytes],{type:tipo}));
+  const a=document.createElement('a'); a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+  return url;
+}
+
+
+function redimensionar(file, maxLado, calidad){
+  return new Promise((res, rej)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1, maxLado/Math.max(img.naturalWidth, img.naturalHeight));
+      const cv=document.createElement('canvas'); cv.width=Math.round(img.naturalWidth*k); cv.height=Math.round(img.naturalHeight*k);
+      const cx=cv.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(img,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg', calidad));
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('Imagen no válida')); };
+    img.src=url;
+  });
+}
+function visor(src){
+  const v=document.createElement('div'); v.className='visor'; v.innerHTML=`<img src="${src}">`; v.onclick=()=>v.remove(); document.body.appendChild(v);
+}
+</script>
+
+
+  <script>
+    window.PUENTE_DESPUES_SYNC = function () {
+      try { if (typeof S !== "undefined" && S.data) refrescar(); else if (typeof recargarInit === "function") recargarInit().then(function () { if (typeof renderInicio === "function") renderInicio(); }); } catch (e) { }
+    };
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () { }); });
+    }
+  </script>
+</body>
+</html>
+
