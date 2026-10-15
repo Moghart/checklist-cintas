@@ -18,6 +18,11 @@
     'inicioDatos', 'datosTablas', 'informesListar', 'obtenerListaInspeccionesBD', 'obtenerCatalogoEquipos',
     'obtenerCatalogoEquiposCompleto', 'listarReportes'];
   var ESPERA_LECTURA_MS = 15000;
+  // Lecturas que de por sí tardan (arman un PDF, traen fotos o imágenes): se espera la respuesta real (hasta 4 min)
+  // y nunca se reemplaza por una copia guardada.
+  var LENTAS = ['apiDescargarPdf', 'informeMapeoPdf', 'informesDescargar', 'reimprimirPdfInspeccion', 'cargarDetallesInspeccionPre',
+    'apiGetFotos', 'apiGetFotoFull', 'obtenerImagenes', 'obtenerMapeoCinta', 'obtenerEspesores', 'compararSemanas'];
+  var ESPERA_LENTA_MS = 240000, ESPERA_EXTRA_MS = 120000;
 
   /* ------------------------------------------------------------ almacenamiento */
   var dbP = null;
@@ -77,7 +82,8 @@
   function marcarEscritura() { try { localStorage.setItem('ic_ult_escritura', String(Date.now())); } catch (e) { } }
 
   function leer(fn, args) {
-    var k = clave(fn, args), usarCache = (CFG.sinCache || []).indexOf(fn) < 0;
+    var lenta = LENTAS.indexOf(fn) >= 0;
+    var k = clave(fn, args), usarCache = !lenta && (CFG.sinCache || []).indexOf(fn) < 0;
     var desdeCache = function (err) {
       if (!usarCache) return Promise.reject(err);
       return cacheLeer(k).then(function (c) {
@@ -88,10 +94,20 @@
     };
     if (!navigator.onLine) return desdeCache(sinSenal(fn));
     var desdeRed = function () {
-      return conLimite(SESION_APP.llamar(fn, args), ESPERA_LECTURA_MS).then(function (v) {
+      var p = SESION_APP.llamar(fn, args).then(function (v) {
         if (usarCache) cacheGuardar(k, v);
         marcarSinSenal(false);
         return v;
+      });
+      if (lenta) return conLimite(p, ESPERA_LENTA_MS);
+      // Si el servidor tarda más de 15 s: se muestra la copia guardada si existe; si no hay copia,
+      // se sigue esperando la respuesta (con señal, el servidor a veces demora en despertar).
+      return conLimite(p, ESPERA_LECTURA_MS).catch(function (e) {
+        if (!(e && e.red && /muy débil/.test(e.message || ''))) throw e;
+        return (usarCache ? cacheLeer(k) : Promise.resolve(null)).then(function (c) {
+          if (c) { p.catch(function () { }); return c.v; }
+          return conLimite(p, ESPERA_EXTRA_MS);
+        });
       });
     };
     if (frescos[k] && Date.now() - frescos[k].t < 10000) { var fr = frescos[k].v; delete frescos[k]; return Promise.resolve(fr); }   // recién llegado en segundo plano
