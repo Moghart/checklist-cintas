@@ -42,6 +42,8 @@ window.PUENTE_FUNCIONES = {
 "obtenerListaInspeccionesBD": "R",
 "obtenerMapeoCinta": "R",
 "obtenerSiguienteNumeroInspeccion": "R",
+"otsGuardar": "W",
+"otsSemana": "R",
 "reimprimirPdfInspeccion": "R",
 "semGuardarReporte": "W",
 "sincronizarInspeccionOffline": "W",

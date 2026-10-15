@@ -98,6 +98,27 @@
   .cargando{position:fixed;inset:0;background:rgba(255,255,255,.6);z-index:90;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-weight:700;color:var(--azul)}
   .spin{width:42px;height:42px;border:5px solid var(--azul-claro);border-top-color:var(--azul);border-radius:50%;animation:g .8s linear infinite}
   @keyframes g{to{transform:rotate(360deg)}}
+  /* OT semanales */
+  .ot-nav{display:inline-flex;align-items:center;gap:6px}
+  .ot-sem{display:inline-flex;flex-direction:column;align-items:center;min-width:150px;line-height:1.15}
+  .ot-sem small{color:var(--muted);font-size:11.5px}
+  .ot-ayuda{font-size:13px;padding:10px 14px}
+  .ot-aviso{font-size:13px;padding:10px 14px;border-left:5px solid #FFC000;background:#FFF9E6}
+  .ot-tabla td{vertical-align:middle}
+  .ot-in{width:130px;padding:6px 8px;border:1px solid var(--borde);border-radius:4px;font-size:14px;font-variant-numeric:tabular-nums;background:#fff}
+  .ot-in:focus{outline:2px solid var(--azul);outline-offset:-1px}
+  .ot-in.cambio{background:#FFF4CE;border-color:#E0A800}
+  .ot-in[readonly]{background:#f3f4f6;border-color:transparent}
+  .ot-in::placeholder{color:#B0B7C3;font-size:12.5px}
+  .ot-chip{display:inline-block;font-size:11.5px;border-radius:12px;padding:2px 8px;background:#E8F1FB;color:var(--azul-osc);white-space:nowrap;margin:1px 0}
+  .ot-chip.mal{background:#FDE8E8;color:#B00020;font-weight:700}
+  .ot-pie{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff;padding:10px 12px;margin:8px 0 14px;border-radius:var(--radio);box-shadow:0 -2px 8px rgba(0,0,0,.08);z-index:5}
+  .ot-carga{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .ot-pto{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--azul-osc);background:#E8F1FB;border-radius:14px;padding:5px 12px}
+  .ot-semanas{display:flex;flex-wrap:wrap;gap:6px}
+  .ot-semanas .btn{flex-direction:column;align-items:flex-start;gap:0}
+  .ot-semanas .btn small{font-weight:400;font-size:10.5px;opacity:.85}
+  @media (max-width:520px){ .ot-in{width:100px} .ot-tag{display:none} .ot-tabla th:nth-child(2),.ot-tabla td:nth-child(2){display:none} }
   @media (max-width:900px){ .form,.sub{grid-template-columns:repeat(2,minmax(0,1fr))} .top h1 small{display:none} .logos-top{height:36px;padding:2px 6px}.logos-top img{height:28px} }
   @media (max-width:520px){ .form,.sub{grid-template-columns:minmax(0,1fr)} .form .c2{grid-column:auto} main{padding:10px} }
 </style>
@@ -207,6 +228,7 @@ function iniciar() {
     var tabs = [['informes', '📄 Informes']];
     if (TABLAS.tablas.length) tabs.push(['datos', '✎ Datos']);
     if (INI.sesion.rol !== 'NINGUNO') tabs.push(['equipos', '🏭 Catálogo de equipos']);
+    if (INI.sesion.rol !== 'NINGUNO') tabs.push(['ots', '📅 OT semanales']);
     if (INI.sesion.rol === 'ADMIN') tabs.push(['usuarios', '👥 Usuarios y permisos']);
     $('#tabs').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('');
     $$('#tabs button').forEach(function (b) { b.onclick = function () { abrirTab(b.dataset.t); }; });
@@ -227,6 +249,7 @@ function abrirTab(t) {
   if (t === 'datos') pintarDatos();
   if (t === 'equipos') cargarEquipos();
   if (t === 'usuarios') cargarUsuarios();
+  if (t === 'ots') cargarOts();
 }
 
 /* =================================================================== INFORMES */
@@ -362,6 +385,352 @@ function eliminarFila(f) {
   if (!confirm('¿Eliminar el registro ' + clave + ' de "' + DT.titulo + '"?\n\nQuedará una copia en la hoja LOG.' +
       (DT.nombre === 'ESP_MUESTREOS' ? '\nSi solo quiere descartarlo de los cálculos, mejor edítelo y ponga VALIDO = NO.' : ''))) return;
   llamar('datosEliminar', [DT.nombre, f._fila, f._firma], 'Eliminando y recalculando…').then(function (r) { toast(r.mensaje); cargarTabla(); });
+}
+
+/* =================================================================== OT SEMANALES */
+var OT = null;
+var MESES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+function diaCorto(iso) { var p = String(iso).split('-'); return +p[2] + ' ' + MESES_C[+p[1] - 1]; }
+function dos2(n) { return (n < 10 ? '0' : '') + n; }
+function semIsoCli(d) {
+  var u = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), dia = u.getUTCDay() || 7;
+  u.setUTCDate(u.getUTCDate() + 4 - dia);
+  var a = u.getUTCFullYear();
+  return { anio: a, semana: Math.ceil(((u - Date.UTC(a, 0, 1)) / 86400000 + 1) / 7) };
+}
+function cargarOts(anio, semana) {
+  $('#view').innerHTML = '<div class="vacio">Cargando…</div>';
+  api('otsSemana', anio || '', semana || '').then(function (d) { OT = d; pintarOts(); },
+    function (e) { $('#view').innerHTML = '<div class="vacio" style="color:#C00000">' + esc(e.message) + '</div>'; });
+}
+function pintarOts() {
+  var d = OT, ed = d.puedeEditar, esHoy = d.anio === d.hoy.anio && d.semana === d.hoy.semana;
+  var nI = d.equipos.filter(function (e) { return e.insp; }).length, nE = d.equipos.filter(function (e) { return e.esp; }).length;
+  var ro = ed ? '' : ' readonly';
+  var h = '<div class="toolbar"><span class="titulo">OT semanales</span>' +
+    '<span class="ot-nav"><button class="btn sm" id="otAnt" title="Semana anterior">◀</button>' +
+    '<span class="ot-sem"><b>Semana ' + esc(d.etiqueta) + ' · ' + d.anio + '</b><small>' + diaCorto(d.desde) + ' al ' + diaCorto(d.hasta) + (esHoy ? ' · semana actual' : '') + '</small></span>' +
+    '<button class="btn sm" id="otSig" title="Semana siguiente">▶</button></span>' +
+    (esHoy ? '' : '<button class="btn sm" id="otHoy">Ir a la semana actual</button>') +
+    (ed ? '<button class="btn pri" id="otPegar">📂 Cargar Excel de OT</button>' : '') + '</div>' +
+    '<div class="caja ot-ayuda">Cargue aquí las OT de cada semana. La <b>Pauta de inspección</b> y la <b>Medición de espesores</b> las toman solas según el equipo y la fecha. ' +
+    'Al guardar, las pautas e informes de espesores de esa semana que quedaron <b>sin OT</b> se completan con la OT cargada.' +
+    (ed ? '' : ' <span class="muted">Usted puede verlas; las cargan los usuarios y administradores.</span>') + '</div>';
+  var p = d.pendientes;
+  if (p.pautas || p.espesores) h += '<div class="caja ot-aviso">⚠ Esta semana hay ' + [p.pautas ? p.pautas + (p.pautas === 1 ? ' pauta' : ' pautas') : '', p.espesores ? p.espesores + (p.espesores === 1 ? ' registro de espesores' : ' registros de espesores') : ''].filter(String).join(' y ') +
+    ' sin OT. Cargue la OT de esos equipos y guarde: se completan solas.</div>';
+  h += '<div class="scroll-x"><table class="t ot-tabla"><tr><th>Equipo</th><th>Ubicación técnica</th><th>OT inspección<br><small>Pauta</small></th><th>OT medición de espesores</th><th>Registros de la semana</th></tr>' +
+    d.equipos.map(function (e, i) {
+      var reg = [];
+      if (e.pautas) reg.push('<span class="ot-chip' + (e.pautaSinOt ? ' mal' : '') + '">📋 Pauta' + (e.pautaSinOt ? ' sin OT' : '') + '</span>');
+      if (e.medicion) reg.push('<span class="ot-chip' + (e.espSinOt ? ' mal' : '') + '">📏 Espesores' + (e.espSinOt ? ' sin OT' : '') + '</span>');
+      return '<tr><td><b>' + esc(e.id) + '</b><small class="muted ot-tag"><br>' + esc(e.tag) + '</small></td><td><small>' + esc(e.ut) + '</small></td>' +
+        '<td><input class="ot-in" data-i="' + i + '" data-t="insp" value="' + esc(e.insp) + '" inputmode="numeric" autocomplete="off" placeholder="sin OT"' + ro + '></td>' +
+        '<td><input class="ot-in" data-i="' + i + '" data-t="esp" value="' + esc(e.esp) + '" inputmode="numeric" autocomplete="off" placeholder="sin OT"' + ro + '>' +
+        (e.espDesc ? '<br><small class="muted corto">' + esc(e.espDesc) + '</small>' : '') + '</td>' +
+        '<td>' + (reg.join(' ') || '<span class="muted">—</span>') + '</td></tr>';
+    }).join('') + '</table></div>';
+  h += '<div class="ot-pie"><span class="muted" id="otCuenta">' + nI + ' de ' + d.equipos.length + ' con OT de inspección · ' + nE + ' con OT de espesores</span>' +
+    (ed ? '<button class="btn pri" id="otGuardar">Guardar OT de la semana ' + esc(d.etiqueta) + '</button>' : '') + '</div>';
+  if (d.semanas.length) h += '<div class="caja"><h2>Semanas cargadas</h2><div class="ot-semanas">' + d.semanas.map(function (w) {
+    var on = w.anio === d.anio && w.semana === d.semana;
+    return '<button class="btn sm' + (on ? ' pri' : '') + '" data-ws="' + w.anio + '|' + w.semana + '">W' + dos2(w.semana) + ' · ' + w.anio +
+      '<small>' + w.insp + ' insp. · ' + w.esp + ' esp.</small></button>';
+  }).join('') + '</div></div>';
+  $('#view').innerHTML = h;
+  $('#otAnt').onclick = function () { cargarOts(d.anio, d.semana - 1); };
+  $('#otSig').onclick = function () { cargarOts(d.anio, d.semana + 1); };
+  if ($('#otHoy')) $('#otHoy').onclick = function () { cargarOts(); };
+  $$('[data-ws]').forEach(function (b) { b.onclick = function () { var x = b.dataset.ws.split('|'); cargarOts(+x[0], +x[1]); }; });
+  if (!ed) return;
+  $$('.ot-in').forEach(function (inp) {
+    inp.oninput = function () { inp.classList.toggle('cambio', inp.value.trim() !== (d.equipos[+inp.dataset.i][inp.dataset.t] || '')); };
+    inp.onkeydown = function (ev) {   // Enter baja a la fila siguiente, como en Excel
+      if (ev.key !== 'Enter') return; ev.preventDefault();
+      var sig = $('.ot-in[data-i="' + (+inp.dataset.i + 1) + '"][data-t="' + inp.dataset.t + '"]'); if (sig) sig.focus();
+    };
+  });
+  $('#otGuardar').onclick = guardarOtsSemana;
+  $('#otPegar').onclick = function () { modalPegarOts(); };
+}
+function guardarOtsSemana() {
+  var d = OT, filas = [];
+  $$('.ot-in').forEach(function (inp) {
+    var e = d.equipos[+inp.dataset.i], t = inp.dataset.t, v = inp.value.trim();
+    if (v !== (e[t] || '')) filas.push({ anio: d.anio, semana: d.semana, equipo: e.id, tipo: t === 'esp' ? 'ESP' : 'INSP', ot: v });
+  });
+  if (!filas.length) { toast('No hay cambios para guardar.'); return; }
+  var malas = filas.filter(function (f) { return f.ot && !/^[0-9A-Za-z][\w\- \/.]{2,30}$/.test(f.ot); });
+  if (malas.length && !confirm('Revise: ' + malas.map(function (f) { return f.equipo + ' "' + f.ot + '"'; }).join(', ') + ' no parece un N° de OT.\n¿Guardar igual?')) return;
+  llamar('otsGuardar', [{ filas: filas, borrarVacias: true }], 'Guardando OT y emparejando registros…').then(function (r) { toast(r.mensaje); cargarOts(d.anio, d.semana); });
+}
+
+/* ---------- Leer OT desde un Excel (.xlsx / .csv) o desde lo pegado ---------- */
+function sinTil(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+/** Lector de .xlsx en el navegador (un .xlsx es un ZIP con XML). Devuelve [{hoja, filas:[[texto,...]]}] */
+function leerXlsx(buf) {
+  var dv = new DataView(buf), u8 = new Uint8Array(buf), fin = -1, ent = {}, dec = new TextDecoder();
+  for (var i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { fin = i; break; }
+  if (fin < 0) return Promise.reject(new Error('El archivo no es un Excel .xlsx. Si es .xls antiguo, ábralo y guárdelo como "Libro de Excel (.xlsx)".'));
+  var n = dv.getUint16(fin + 10, true), p = dv.getUint32(fin + 16, true);
+  for (var k = 0; k < n && dv.getUint32(p, true) === 0x02014b50; k++) {
+    var ln = dv.getUint16(p + 28, true);
+    ent[dec.decode(u8.subarray(p + 46, p + 46 + ln))] = { met: dv.getUint16(p + 10, true), tam: dv.getUint32(p + 20, true), off: dv.getUint32(p + 42, true) };
+    p += 46 + ln + dv.getUint16(p + 30, true) + dv.getUint16(p + 32, true);
+  }
+  function texto(nombre) {
+    var e = ent[nombre];
+    if (!e) return Promise.resolve(null);
+    var ini = e.off + 30 + dv.getUint16(e.off + 26, true) + dv.getUint16(e.off + 28, true), datos = u8.subarray(ini, ini + e.tam);
+    if (e.met === 0) return Promise.resolve(dec.decode(datos));
+    if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('Este navegador no puede abrir .xlsx; use Chrome o Edge actualizado, o copie y pegue las filas.'));
+    return new Response(new Blob([datos]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+  }
+  var xml = function (t) { return t ? new DOMParser().parseFromString(t, 'application/xml') : null; };
+  var tags = function (r, nom) { return r ? Array.prototype.slice.call(r.getElementsByTagNameNS('*', nom)) : []; };
+  return Promise.all([texto('xl/workbook.xml'), texto('xl/_rels/workbook.xml.rels'), texto('xl/sharedStrings.xml'), texto('xl/styles.xml')]).then(function (r) {
+    var wb = xml(r[0]), rels = {}, compartidos = [], esFecha = [];
+    if (!wb) throw new Error('El archivo no es un libro de Excel.');
+    tags(xml(r[1]), 'Relationship').forEach(function (x) { var t = x.getAttribute('Target') || ''; rels[x.getAttribute('Id')] = t.charAt(0) === '/' ? t.slice(1) : 'xl/' + t.replace(/^\.\//, ''); });
+    tags(xml(r[2]), 'si').forEach(function (si) { compartidos.push(tags(si, 't').map(function (t) { return t.textContent; }).join('')); });
+    var st = xml(r[3]), propios = {};
+    tags(st, 'numFmt').forEach(function (f) { propios[f.getAttribute('numFmtId')] = f.getAttribute('formatCode') || ''; });
+    var xfs = tags(st, 'cellXfs')[0];
+    tags(xfs, 'xf').forEach(function (x) {
+      var id = +x.getAttribute('numFmtId') || 0;
+      esFecha.push((id >= 14 && id <= 17) || id === 22 || (id >= 27 && id <= 36) || (id >= 50 && id <= 58) || (!!propios[id] && /[dy]/i.test(propios[id].replace(/\[[^\]]*\]|"[^"]*"|\\./g, ''))));
+    });
+    var hojas = tags(wb, 'sheet').map(function (h) { return { nombre: h.getAttribute('name'), ruta: rels[h.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id') || h.getAttribute('r:id')] }; });
+    return Promise.all(hojas.map(function (h) { return texto(h.ruta); })).then(function (txts) {
+      return hojas.map(function (h, j) {
+        var filas = {};
+        tags(xml(txts[j]), 'c').forEach(function (c) {
+          var m = (c.getAttribute('r') || '').match(/^([A-Z]+)(\d+)$/); if (!m) return;
+          var col = 0; for (var i = 0; i < m[1].length; i++) col = col * 26 + m[1].charCodeAt(i) - 64;
+          var t = c.getAttribute('t'), vn = tags(c, 'v')[0], v = vn ? vn.textContent : '', val;
+          if (t === 's') val = compartidos[+v] || '';
+          else if (t === 'inlineStr') val = tags(c, 't').map(function (x) { return x.textContent; }).join('');
+          else if (t === 'e') val = '';
+          else if (t === 'str' || t === 'b') val = v;
+          else if (v !== '' && !isNaN(+v)) {
+            if (esFecha[+c.getAttribute('s') || 0]) { var d = new Date(Math.round((+v - 25569) * 86400000)); val = dos2(d.getUTCDate()) + '-' + dos2(d.getUTCMonth() + 1) + '-' + d.getUTCFullYear(); }
+            else val = String(Math.abs(+v - Math.round(+v)) < 1e-9 ? Math.round(+v) : +v);
+          } else val = v;
+          val = String(val).replace(/_x000D_/g, '').replace(/\s+/g, ' ').trim();
+          if (val !== '') (filas[+m[2]] = filas[+m[2]] || [])[col - 1] = val;
+        });
+        return { hoja: h.nombre, filas: Object.keys(filas).map(Number).sort(function (a, b) { return a - b; }).map(function (k) { var f = filas[k]; for (var i = 0; i < f.length; i++) if (f[i] === undefined) f[i] = ''; return f; }) };
+      });
+    });
+  });
+}
+function filasDeTexto(t) {
+  return String(t || '').split(/\r?\n/).filter(function (l) { return l.trim(); }).map(function (l) {
+    return (l.indexOf('\t') >= 0 ? l.split('\t') : l.indexOf(';') >= 0 ? l.split(';') : l.split(/\s{2,}/)).map(function (c) { return c.replace(/^"|"$/g, '').trim(); });
+  });
+}
+/** Busca la fila de títulos (Nro. Orden / OT, Puesto de trabajo, Ubicación técnica, Actividad...) para saber qué columna es cada cosa. */
+function columnasOt(filas) {
+  for (var i = 0; i < Math.min(filas.length, 20); i++) {
+    var c = filas[i].map(sinTil), h = { fila: i, ot: -1, fecha: -1, semana: -1, texto: -1, puesto: -1, ut: -1, den: -1 };
+    c.forEach(function (x, j) {
+      if (h.ot < 0 && /^(N\W*\s*|NRO\W*\s*|NUMERO\s*(DE\s*)?)?(ORDEN|OT|O\.T\.?)(\s*(DE\s*)?TRABAJO|\s*SAP)?\.?$/.test(x)) h.ot = j;
+      if (/^SEMANA$|^SEM\.?$|^W$|^N\W*\s*SEMANA$/.test(x)) h.semana = j;
+      if (h.texto < 0 && /TEXTO|DESCRIP|ACTIVIDAD/.test(x)) h.texto = j;
+      if (h.puesto < 0 && /PUESTO|PTO\W*\s*(DE\s*)?(TBJO|TRAB)/.test(x) && !/RESP/.test(x)) h.puesto = j;
+      if (h.ut < 0 && /UBIC/.test(x)) h.ut = j;
+      if (h.den < 0 && /DENOMIN|^EQUIPO$|^TAG/.test(x)) h.den = j;
+      if (/FECHA|FE\.|FEC\./.test(x) && (h.fecha < 0 || /INIC|PLAN|PROG|EJEC/.test(x))) h.fecha = j;
+    });
+    if (h.ot >= 0) return h;
+  }
+  return null;
+}
+/** Datos de la cabecera de la hoja (antes de los títulos): "Semana 38" y "Periodo 14.09.2026 al 20.09.2026". */
+function metaHoja(filas, hasta) {
+  var r = { semana: 0, fecha: null };
+  for (var i = 0; i < Math.min(hasta, filas.length); i++) {
+    var f = filas[i] || [];
+    for (var j = 0; j < f.length; j++) {
+      var x = sinTil(f[j]), m;
+      if (!x) continue;
+      if (/^SEMANA\W*$/.test(x)) { for (var k = j + 1; k < f.length; k++) { if ((m = String(f[k] || '').match(/^\D*(\d{1,2})\D*$/))) { r.semana = +m[1]; break; } if (String(f[k] || '').trim()) break; } }
+      else if (!r.semana && (m = x.match(/^SEMANA\W*(\d{1,2})$/))) r.semana = +m[1];
+      if (/PERIODO|DESDE|FECHA/.test(x) || /\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4}/.test(x)) {
+        var t = [f[j]].concat(f.slice(j + 1, j + 3)).join(' '), d0 = fechaTexto(t);
+        if (d0 && (!r.fecha || /PERIODO|DESDE/.test(x))) r.fecha = d0;
+      }
+    }
+  }
+  return r;
+}
+function fechaTexto(s) {
+  var m;
+  if ((m = String(s).match(/\b(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})\b/))) return new Date(+m[3], +m[2] - 1, +m[1]);
+  if ((m = String(s).match(/\b(\d{4})-(\d{2})-(\d{2})\b/))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  return null;
+}
+function sinCeros(ot) { var s = String(ot || '').trim(); return /^\d+$/.test(s) ? s.replace(/^0+(?=\d)/, '') : s; }
+/**
+ * filas: [[celda,...]] de una hoja de Excel o de lo pegado. En cada fila busca:
+ *   equipo  -> ubicación técnica (exacta o con sufijo, ej. ...-STC-CIN), denominación (110FE06 ALIMENTADOR...), ID o TAG
+ *   N° OT   -> columna "Nro. Orden" / "OT" (sin los ceros de adelante)
+ *   semana  -> columna Semana, "Semana 38" de la cabecera, el periodo, una fecha o W38
+ *   tipo    -> si el texto dice ESPESOR va a Medición de espesores; si no, a la Pauta de inspección
+ *   op.puesto: solo las filas de ese puesto de trabajo (ej. CLXMXN03), si la hoja trae esa columna.
+ */
+function leerOtsFilas(filasIn, op) {
+  op = op || {};
+  var d = OT, porId = {}, porUt = {}, filas = [], otras = [], otroPuesto = {}, vistas = {}, repetidas = 0;
+  d.equipos.forEach(function (e) { porId[e.id] = e; if (e.ut) porUt[e.ut.toUpperCase().replace(/\s+/g, '')] = e; });
+  var uts = Object.keys(porUt).sort(function (a, b) { return b.length - a.length; });
+  var col = columnasOt(filasIn), meta = metaHoja(filasIn, col ? col.fila : 0);
+  var defA = d.anio, defS = d.semana;
+  if (meta.fecha) { var wm = semIsoCli(meta.fecha); defA = wm.anio; defS = wm.semana; }
+  if (meta.semana) { defS = meta.semana; if (!meta.fecha) defA = d.anio; }
+  var filtro = String(op.puesto || '').toUpperCase().replace(/\s+/g, '');
+  var porUtCelda = function (c) {
+    var cu = String(c || '').toUpperCase().replace(/\s+/g, '');
+    if (!cu) return null;
+    if (porUt[cu]) return porUt[cu];
+    for (var i = 0; i < uts.length; i++) if (cu.indexOf(uts[i] + '-') === 0) return porUt[uts[i]];   // CLRA-AMF-CT5-STC-CIN -> CLRA-AMF-CT5-STC
+    return null;
+  };
+  var porIdTexto = function (c) {
+    var m = String(c || '').toUpperCase().match(/(\d{3})\s*-?\s*([A-Z]{2})\s*-?\s*(\d{2})(?!\d)/);
+    return m && porId[m[1] + m[2] + m[3]] || null;
+  };
+  filasIn.forEach(function (cel, nf) {
+    if (col && nf <= col.fila) return;
+    cel = cel.map(function (c) { return String(c === undefined || c === null ? '' : c).trim(); });
+    var lin = cel.join('\t'), U = lin.toUpperCase(), eq = null, celEq = -1, m;
+    if (!lin.replace(/\t/g, '').trim()) return;
+    if (filtro) {   // solo las OT de nuestro puesto de trabajo
+      var pt = col && col.puesto >= 0 ? cel[col.puesto].toUpperCase().replace(/\s+/g, '') : '';
+      if (!pt) { var mp = U.match(new RegExp('\\b(' + filtro.replace(/\d+$/, '') + '\\d+)\\b')); if (mp) pt = mp[1]; }   // pegado sin títulos: CLXMXN05 dentro de la fila
+      if (pt && pt !== filtro) { otroPuesto[pt] = (otroPuesto[pt] || 0) + 1; return; }
+    }
+    // 1) columnas con título: ubicación técnica, denominación
+    if (col && col.ut >= 0 && (eq = porUtCelda(cel[col.ut]))) celEq = col.ut;
+    if (!eq && col && col.den >= 0 && (eq = porIdTexto(cel[col.den]) || porUtCelda(cel[col.den]))) celEq = col.den;
+    // 2) cualquier celda: ubicación técnica o ID / TAG exacto
+    if (!eq) cel.forEach(function (c, j) {
+      if (eq || !c) return;
+      var id = c.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^CT(?=\d)/, '');
+      var e = porUtCelda(c) || porId[id];
+      if (e) { eq = e; celEq = j; }
+    });
+    // 3) el ID dentro de un texto (ej. "110FE06 ALIMENTADOR 110CV02")
+    if (!eq) eq = porIdTexto(U);
+    if (!eq) { var sin = U.replace(/\s+/g, ''); uts.some(function (u) { if (sin.indexOf(u) >= 0) { eq = porUt[u]; return true; } }); }
+    var ot = '';
+    if (col && col.ot >= 0) ot = (String(cel[col.ot] || '').match(/\d{5,14}/) || [''])[0];
+    if (!ot) cel.some(function (c, j) { if (j !== celEq && /^\d{7,14}$/.test(c)) { ot = c; return true; } });
+    if (!ot && (m = lin.match(/(?:^|[^\d\/.-])(\d{8,14})(?![\d\/.-])/))) ot = m[1];
+    ot = sinCeros(ot);
+    if (!eq || !ot) { otras.push(cel.filter(String).join('  ·  ')); return; }
+    var anio = defA, sem = defS, f = null, ws = 0;
+    if (col && col.semana >= 0 && (ws = (String(cel[col.semana]).match(/(\d{1,2})/) || [])[1])) sem = +ws;
+    else if (col && col.fecha >= 0 && (f = fechaTexto(cel[col.fecha]))) { }
+    else if (!meta.semana && !meta.fecha && ((m = U.match(/\bW\s?(\d{1,2})\b/)) || (m = U.match(/SEMANA\s*(\d{1,2})\b/)))) sem = +m[1];
+    else if (!meta.semana && !meta.fecha) f = fechaTexto(lin);
+    if (f) { var w = semIsoCli(f); anio = w.anio; sem = w.semana; }
+    var tipo = /ESPESOR/.test(sinTil(lin)) ? 'ESP' : 'INSP';
+    var desc = col && col.texto >= 0 ? cel[col.texto] : (cel.filter(function (c, j) { return j !== celEq && /[A-Za-zÁÉÍÓÚÑáéíóúñ]{3}/.test(c) && !porUtCelda(c); })
+      .sort(function (a, b) { return b.length - a.length; })[0] || '');
+    var k = anio + '|' + sem + '|' + eq.id + '|' + tipo;
+    if (vistas[k] !== undefined) { if (filas[vistas[k]].ot !== ot) repetidas++; filas[vistas[k]] = null; }
+    vistas[k] = filas.length;
+    filas.push({ anio: anio, semana: sem, equipo: eq.id, tipo: tipo, ot: ot, desc: String(desc || '').substring(0, 120) });
+  });
+  return { filas: filas.filter(Boolean), otras: otras, otroPuesto: otroPuesto, columnas: col, repetidas: repetidas, meta: meta };
+}
+function leerOtsPegadas(texto, op) { return leerOtsFilas(filasDeTexto(texto), op); }
+
+function modalPegarOts() {
+  var res = { filas: [], otras: [] }, fuente = null;   // fuente: {nombre, hojas:[{hoja, filas}]} (archivo) o {texto} (pegado)
+  var puesto = String(OT.puestoOt || '').toUpperCase();
+  modal({
+    titulo: '📂 Cargar OT desde Excel',
+    cuerpo: '<div class="ot-carga"><label class="btn pri" for="otArchivo">📂 Elegir archivo Excel (.xlsx)</label>' +
+      '<input type="file" id="otArchivo" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" style="display:none">' +
+      '<span class="muted" id="otArchNom">o copie las filas desde Excel y péguelas abajo</span>' +
+      (puesto ? '<span class="ot-pto" title="Se cambia en Administración › Datos › Configuración (PUESTO_TRABAJO_OT)">Solo OT del puesto <b>' + esc(puesto) + '</b></span>' : '') + '</div>' +
+      '<textarea id="otTexto" rows="4" style="width:100%;font-family:Consolas,monospace;font-size:12px;padding:8px;border:1px solid var(--borde);border-radius:4px;margin-top:8px" placeholder="Pegue aquí las filas (Ctrl+V)"></textarea>' +
+      '<p class="hint">Se leen todas las hojas del archivo (Lunes a Domingo). De cada fila se toma el <b>Nro. Orden</b>, el equipo por la <b>Ubicación técnica</b> (o la denominación) y la semana de la cabecera ' +
+      '(<b>Semana</b> / <b>Periodo</b>). Solo se toman las OT de nuestro puesto de trabajo' + (puesto ? ' (<b>' + esc(puesto) + '</b>)' : '') + '; las demás se ignoran. ' +
+      'Si la actividad dice <b>ESPESOR</b>, la OT va a Medición de espesores; si no, a la Pauta de inspección.</p>' +
+      '<div id="otVista"></div>',
+    botones: [{ txt: 'Cancelar' }, { txt: 'Guardar OT', pri: true, fn: function (cerrar, b) {
+      if (!res.filas.length) { toast('No se reconoció ninguna OT. Revise que cada fila tenga el equipo y el N° de OT.', true); return; }
+      b.disabled = true;
+      llamar('otsGuardar', [{ filas: res.filas, borrarVacias: false }], 'Guardando ' + res.filas.length + ' OT y emparejando registros…').then(function (r) {
+        cerrar(); toast(r.mensaje);
+        var w = res.filas[0]; cargarOts(w.anio, w.semana);
+      }, function () { b.disabled = false; });
+    } }],
+    alAbrir: function (bg) {
+      var ta = bg.querySelector('#otTexto'), vista = bg.querySelector('#otVista'), arch = bg.querySelector('#otArchivo');
+      var procesar = function () {
+        if (!fuente) { res = { filas: [], otras: [] }; vista.innerHTML = ''; return; }
+        var op = { puesto: puesto.replace(/\s+/g, '') }, todas = { filas: [], otras: [], repetidas: 0, otroPuesto: {} }, usadas = [];
+        var hojas = fuente.hojas || [{ hoja: '', filas: filasDeTexto(fuente.texto) }];
+        var conTitulos = hojas.some(function (h) { return columnasOt(h.filas); });
+        hojas.forEach(function (h) {
+          if (fuente.hojas && conTitulos && !columnasOt(h.filas)) return;   // hojas sin columna de OT (Recursos, Equipos de apoyo...)
+          var r = leerOtsFilas(h.filas, op);
+          if (r.filas.length) usadas.push((h.hoja || 'archivo') + ' (' + r.filas.length + ')');
+          todas.filas = todas.filas.concat(r.filas); todas.otras = todas.otras.concat(r.otras); todas.repetidas += r.repetidas || 0;
+          Object.keys(r.otroPuesto).forEach(function (k) { todas.otroPuesto[k] = (todas.otroPuesto[k] || 0) + r.otroPuesto[k]; });
+        });
+        // la misma OT puede venir en varios días: queda una por equipo, semana y tipo
+        var ult = {};
+        todas.filas.forEach(function (x, i) {
+          var k = x.anio + '|' + x.semana + '|' + x.equipo + '|' + x.tipo;
+          if (ult[k] !== undefined && todas.filas[ult[k]].ot !== x.ot) todas.repetidas++;
+          ult[k] = i;
+        });
+        todas.filas = todas.filas.filter(function (x, i) { return ult[x.anio + '|' + x.semana + '|' + x.equipo + '|' + x.tipo] === i; })
+          .sort(function (a, b) { return (a.anio * 100 + a.semana) - (b.anio * 100 + b.semana) || (a.tipo > b.tipo ? -1 : a.tipo < b.tipo ? 1 : 0) || (a.equipo < b.equipo ? -1 : 1); });
+        res = todas;
+        mostrar(fuente.nombre ? 'Archivo ' + fuente.nombre + (usadas.length ? ' · hojas: ' + usadas.join(', ') : '') : '');
+      };
+      var mostrar = function (origen) {
+        var porSem = {}, nE = res.filas.filter(function (f) { return f.tipo === 'ESP'; }).length, op = Object.keys(res.otroPuesto || {});
+        res.filas.forEach(function (f) { var k = 'W' + dos2(f.semana) + ' · ' + f.anio; porSem[k] = (porSem[k] || 0) + 1; });
+        vista.innerHTML = (origen ? '<div class="muted" style="margin-bottom:4px">' + esc(origen) + '</div>' : '') +
+          '<b>' + res.filas.length + (res.filas.length === 1 ? ' OT reconocida' : ' OT reconocidas') + '</b>' +
+          (res.filas.length ? ' <span class="muted">(' + (res.filas.length - nE) + ' Pauta · ' + nE + ' Espesores — ' + Object.keys(porSem).map(function (k) { return k + ': ' + porSem[k]; }).join(' · ') + ')</span>' : '') +
+          (op.length ? '<div class="muted" style="margin-top:2px">No se toman ' + op.map(function (k) { return res.otroPuesto[k] + ' de ' + esc(k); }).join(', ') + ' (otro puesto de trabajo).</div>' : '') +
+          (res.repetidas ? '<div class="ot-aviso" style="margin-top:8px;padding:8px 10px;border-radius:6px">⚠ ' + res.repetidas + (res.repetidas === 1 ? ' fila trae' : ' filas traen') +
+            ' otra OT para un equipo que ya tenía una esa semana: se usa la última. Revise la lista.</div>' : '') +
+          (res.filas.length ? '<div class="scroll-x" style="max-height:300px;overflow:auto;margin-top:6px"><table class="t"><tr><th>Semana</th><th>Equipo</th><th>Para</th><th>N° OT</th><th>Actividad</th></tr>' +
+            res.filas.map(function (f) {
+              return '<tr><td>W' + dos2(f.semana) + ' · ' + f.anio + '</td><td><b>' + esc(f.equipo) + '</b></td><td>' + (f.tipo === 'ESP' ? '📏 Espesores' : '📋 Pauta') + '</td><td>' + esc(f.ot) + '</td><td><small>' + esc(f.desc) + '</small></td></tr>';
+            }).join('') + '</table></div>' : '') +
+          (res.otras.length ? '<details style="margin-top:8px"><summary class="muted">' + res.otras.length + (res.otras.length === 1 ? ' fila no reconocida' : ' filas no reconocidas') +
+            ' (equipos de otra área, totales o sin N° de orden)</summary><pre style="white-space:pre-wrap;font-size:11px;max-height:140px;overflow:auto">' + esc(res.otras.slice(0, 80).join('\n')) + '</pre></details>' : '');
+      };
+      ta.oninput = function () {
+        arch.value = ''; bg.querySelector('#otArchNom').textContent = 'o copie las filas desde Excel y péguelas abajo';
+        fuente = ta.value.trim() ? { texto: ta.value } : null; procesar();
+      };
+      arch.onchange = function () {
+        var f = arch.files && arch.files[0]; if (!f) return;
+        bg.querySelector('#otArchNom').textContent = f.name; ta.value = ''; vista.innerHTML = '<div class="muted">Leyendo ' + esc(f.name) + '…</div>';
+        var lector = new FileReader();
+        lector.onload = function () {
+          var pr = /\.(csv|txt)$/i.test(f.name) ? Promise.resolve([{ hoja: '', filas: filasDeTexto(new TextDecoder().decode(lector.result)) }]) : leerXlsx(lector.result);
+          pr.then(function (hojas) {
+            fuente = { nombre: f.name, hojas: hojas }; procesar();
+            if (!res.filas.length) vista.innerHTML = '<div style="color:#C00000">No se encontraron OT en ' + esc(f.name) + (puesto ? ' para el puesto ' + esc(puesto) : '') +
+              '. Revise que tenga la columna "Nro. Orden" y la ubicación técnica del equipo.</div>' + vista.innerHTML;
+          }, function (e) { vista.innerHTML = '<div style="color:#C00000">' + esc(e.message) + '</div>'; });
+        };
+        lector.readAsArrayBuffer(f);
+      };
+    }
+  });
 }
 
 /* =================================================================== EQUIPOS */

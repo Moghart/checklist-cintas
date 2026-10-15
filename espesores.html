@@ -1061,9 +1061,16 @@ function personasRol(rol) {
 }
 function personaRol(rol, distintaDe) { return personasRol(rol).filter(function (n) { return n !== distintaDe; })[0] || ''; }
 /** OT cargada en la hoja ORDENES_TRABAJO para el equipo y la semana de la fecha. */
+/** Semana ISO (lunes a domingo), la misma de la Pauta y de la pantalla "OT semanales". */
+function semIso(fecha) {
+  var p = String(fecha).split('-'), u = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])), dia = u.getUTCDay() || 7;
+  u.setUTCDate(u.getUTCDate() + 4 - dia);
+  var a = u.getUTCFullYear();
+  return { anio: a, semana: Math.ceil(((u - Date.UTC(a, 0, 1)) / 86400000 + 1) / 7) };
+}
 function otSemana(idEq, fecha) {
   if (!fecha) return '';
-  var anio = Number(fecha.substr(0, 4)), sem = numeroSemana_(fecha), r = '';
+  var w = semIso(fecha), anio = w.anio, sem = w.semana, r = '';
   (cat.ots || []).forEach(function (o) { if (o.equipo === idEq && Number(o.anio) === anio && Number(o.semana) === sem) r = String(o.ot); });
   return r;
 }
@@ -1135,7 +1142,7 @@ function pintarMuestreo() {
   if (!ui.tramo || !bor.tramos[ui.tramo]) ui.tramo = eq.cintas[0].idCinta;
   var c = cinta(eq, ui.tramo), t = bor.tramos[ui.tramo], ant = anterior(c, bor.fecha), multi = eq.cintas.length > 1;
   buscarOt();
-  var sem = bor.fecha ? numeroSemana_(bor.fecha) : '';
+  var sem = bor.fecha ? semIso(bor.fecha).semana : '';
   var ins = (cat.listas.instrumentos || []).map(function (p) { return p.modelo; });
 
   s += '</div>';

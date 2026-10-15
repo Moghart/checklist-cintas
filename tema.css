@@ -196,3 +196,10 @@ html[data-app="admin"] .modal header { background: var(--ic-navy); border-radius
 html[data-app="admin"] input, html[data-app="admin"] select { border-radius: 8px; }
 html[data-app="admin"] fieldset { border-color: var(--ic-linea) !important; border-radius: 12px !important; }
 html.ic-cel[data-app="admin"] .toast { bottom: 96px; }
+
+/* OT semanales: la barra de guardar queda sobre el menú inferior del celular */
+html.ic-cel .ot-pie{bottom:calc(66px + env(safe-area-inset-bottom))}
+/* Ventanas, avisos y "cargando" siempre encima del menú lateral y de la barra inferior */
+.modal-bg{z-index:2147483100!important}
+.toast{z-index:2147483200!important}
+.cargando{z-index:2147483150!important}

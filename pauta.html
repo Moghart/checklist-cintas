@@ -445,7 +445,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     var n = numSemana($('inSemana').value);
     if (n) $('inSemana').value = 'W' + dos(n);
     var tag = $('selTag').value;
-    $('inOt').value = (n && tag && programa[n + '|' + tag]) || '';
+    $('inOt').value = (n && tag && (programa[anioActual() + '|' + n + '|' + tag] || programa[n + '|' + tag])) || '';
   }
   function anioActual() { var d = leerFecha($('inFecha').value); return d ? d.getFullYear() : new Date().getFullYear(); }
 
@@ -480,7 +480,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     servidor('buscarDatosFormulario', tag, 'W' + dos(n), anioActual()).then(function (r) {
       if ($('selTag').value !== tag || !r || !r.exito || !r.hayReferencia) return;
       aplicarGuardado(insp, r);
-      if (r.esExistente && r.ot) $('inOt').value = r.ot;
+      if (r.esExistente && r.ot && !/^SIN OT/i.test(r.ot)) $('inOt').value = r.ot;
       aviso.textContent = r.esExistente
         ? 'Ya existe una inspección guardada de ' + tag + ' en esta semana. Se cargó para editarla; al guardar se actualiza.'
         : 'Se cargaron como referencia los datos de la última inspección de ' + tag + ' (' + r.semanaReferencia + '). Revise cada punto antes de guardar.';

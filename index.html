@@ -208,6 +208,9 @@ function pintarMenu(d, sinSenal) {
     '<div class="cab"><b>Catálogo de equipos</b><span>🏭</span></div><div class="cuerpo">Ficha técnica única de cada equipo y cinta: la usan todas las apps e informes.' +
     (s.rol === 'ADMIN' ? ' Usted puede modificarla.' : ' Solo los administradores la modifican.') +
     '<div class="pie">' + badge(s.rol || 'LECTOR') + '<span class="etq">Con y sin señal</span></div></div></a>' +
+    '<a class="app admin" href="admin.html?tab=ots">' +
+    '<div class="cab"><b>OT semanales</b><span>📅</span></div><div class="cuerpo">Cargue cada semana las OT: la Pauta de inspección y la Medición de espesores las toman solas.' +
+    '<div class="pie">' + badge(s.rol || 'LECTOR') + '<span class="etq">Guardar requiere señal</span></div></div></a>' +
     '<a class="app admin" href="admin.html">' +
     '<div class="cab"><b>Administración</b><span>⚙️</span></div><div class="cuerpo">Informes para descargar' +
     (s.rol === 'ADMIN' ? ', equipos, datos y usuarios con sus perfiles' : (s.rol === 'EDITOR' ? ' y corrección de datos' : '')) + '.' +
