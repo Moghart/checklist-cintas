@@ -123,9 +123,19 @@
   }
   function sinSenalEscritura() { var e = new Error('Sin conexión'); e.red = true; return e; }
 
+  var activas = 0;   // llamadas que hizo la persona y aún esperan respuesta: la descarga de fondo les da el paso
   function llamar(fn, args) {
-    return (TIPO[fn] === 'W' || /^(admin\w*Guardar|admin\w*Eliminar|adminEquipoActivo|datosGuardar|datosEliminar|datosAgregar|sesionCambiarPin)$/.test(fn))
+    activas++;
+    var fin = function () { activas = Math.max(0, activas - 1); };
+    var p = (TIPO[fn] === 'W' || /^(admin\w*Guardar|admin\w*Eliminar|adminEquipoActivo|datosGuardar|datosEliminar|datosAgregar|sesionCambiarPin)$/.test(fn))
       ? escribir(fn, args) : leer(fn, args);
+    p.then(fin, fin);
+    return p;
+  }
+  /** Espera (máx. 20 s) a que terminen las llamadas de la persona antes de seguir descargando en segundo plano. */
+  function darPaso() {
+    var t0 = Date.now();
+    return new Promise(function (ok) { (function mirar() { if (!activas || Date.now() - t0 > 20000) ok(); else setTimeout(mirar, 250); })(); });
   }
 
   /* ------------------------------------------------------------ bandeja (Mapeo) */
@@ -370,13 +380,13 @@
     function siguiente() {
       if (i >= total) return Promise.resolve();
       var t = tareas[i++];
-      return conLimite(SESION_APP.llamar(t[0], t[1]), 60000).then(function (v) {
+      return darPaso().then(function () { return conLimite(SESION_APP.llamar(t[0], t[1]), 60000); }).then(function (v) {
         hechas++;
         if (t[2]) t[2](v);                                   // permite encadenar (ej: fichas de cada cinta)
         if ((CFG.sinCache || []).indexOf(t[0]) < 0) return cacheGuardar(clave(t[0], t[1]), v);
       }, function () { fallidas++; }).then(function () { total = tareas.length; if (alAvanzar) alAvanzar(hechas + fallidas, total); return siguiente(); });
     }
-    return Promise.all([siguiente(), siguiente(), siguiente()]).then(function () { return { hechas: hechas, fallidas: fallidas }; });
+    return Promise.all([siguiente(), siguiente()]).then(function () { return { hechas: hechas, fallidas: fallidas }; });   // 2 a la vez: no compite con lo que hace la persona
   }
 
   window.PUENTE_API = { sincronizar: sincronizar, cola: colaTodos, llamar: llamar, precargar: precargar };

@@ -2,7 +2,7 @@
  * preparar.js — mantiene al día en el teléfono, SOLO, los datos para trabajar sin señal.
  * Nadie tiene que acordarse de nada: desde cualquier pantalla de la app y siempre que haya señal,
  *   - cada 2 minutos pregunta al servidor si alguien guardó algo (consulta liviana, "versionDatos");
- *     si hubo cambios, descarga todo de nuevo (fichas de cada cinta, catálogos, semanas, etc.);
+ *     si hubo cambios, descarga de nuevo catálogos y semanas (y las fichas de cada cinta, como máximo cada 20 min);
  *   - al abrir la app, al volver a ella y al recuperar la señal revisa de inmediato;
  *   - además, por seguridad, rápida cada 15 min y completa cada 2 horas aunque no haya cambios.
  * Sin señal, si los datos guardados son antiguos se muestra un aviso arriba de la pantalla.
@@ -10,7 +10,7 @@
  */
 (function () {
   var MIN = 60 * 1000;
-  var CADA_RAPIDA = 15 * MIN, CADA_COMPLETA = 120 * MIN, REVISAR_CADA = 2 * MIN, AVISO_ANTIGUO = 8 * 60 * MIN;
+  var CADA_RAPIDA = 15 * MIN, CADA_COMPLETA = 120 * MIN, CADA_COMPLETA_CAMBIOS = 20 * MIN, REVISAR_CADA = 2 * MIN, AVISO_ANTIGUO = 8 * 60 * MIN;
   var PAGINA_ACTUAL = (window.PUENTE && window.PUENTE.app) || '';
   var MODULOS = ['MAPEO', 'ESPESORES', 'SEMANAL', 'INSPECCION', 'FLASH', 'CHECKLIST'];
 
@@ -97,7 +97,10 @@
     return SESION_APP.llamar('versionDatos', []).then(function (r) {
       var v = r && r.v ? String(r.v) : '';
       if (v && (v !== ls('ic_version') || !(+ls('ic_preparado')))) {
-        return ejecutar({ completo: true }).then(function (res) { if (res) ls('ic_version', v); return res; });
+        // Hubo cambios: si la descarga completa (fichas de cada cinta) se hizo hace menos de 20 min, basta con la rápida;
+        // así un día con muchos registros no deja al teléfono descargando todo una y otra vez.
+        var completa = !(+ls('ic_preparado')) || Date.now() - (+ls('ic_preparado') || 0) > CADA_COMPLETA_CAMBIOS;
+        return ejecutar({ completo: completa }).then(function (res) { if (res) ls('ic_version', v); return res; });
       }
       return porTiempo();
     }, function () { return porTiempo(); });      // servidor antiguo sin versionDatos: solo por tiempo
