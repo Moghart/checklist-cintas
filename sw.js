@@ -3,7 +3,7 @@
  * Guarda la app en el celular para que abra aunque no haya señal.
  * Al publicar cambios en index.html, sube el número de VERSION para forzar la actualización.
  */
-const VERSION = 'inspeccion-cintas-v15';
+const VERSION = 'inspeccion-cintas-v16';
 const ARCHIVOS = [
   './',
   './index.html',

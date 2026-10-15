@@ -59,6 +59,7 @@
     }]);
     t.push(['adminEquipos', []]);                    // Catálogo de equipos: todos lo ven (también sin señal)
     if (si('INSPECCION')) t.push(['otsSemana', ['', '']]);   // OT semanales de la semana actual (también sin señal)
+    if (si('INSPECCION')) t.push(['cumplimiento', ['', '', 12]]);   // panel de cumplimiento (también sin señal)
     if (d.sesion && d.sesion.rol === 'ADMIN') t.push(['adminUsuarios', []]);
     t.push(['datosTablas', []]); t.push(['informesListar', []]);
     return t;

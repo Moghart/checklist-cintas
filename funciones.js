@@ -23,6 +23,8 @@ window.PUENTE_FUNCIONES = {
 "buscarDatosFormulario": "R",
 "cargarDetallesInspeccionPre": "R",
 "compararSemanas": "R",
+"cumplimiento": "R",
+"enviarInformeCorreo": "W",
 "flashGuardarReporte": "W",
 "getInitialData": "R",
 "guardarCinta": "W",

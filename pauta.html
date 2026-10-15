@@ -808,7 +808,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     };
     $('btnGuardar').disabled = true;
     velo('Generando PDF...');
-    generarYDescargar(reg).catch(function (e) {
+    generarYDescargar(reg, true).catch(function (e) {
       avisar('No se pudo generar el PDF (' + e.message + '). La inspección se guardará igual.', 'err', 8000);
     }).then(function () { return guardarEnCola(reg); }).then(function () {
       insp = nuevaInspeccion(); insp.responsables = responsablesPorDefecto();
@@ -824,9 +824,11 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     }).then(function () { velo(''); $('btnGuardar').disabled = false; });
   }
 
-  function generarYDescargar(reg) {
+  function generarYDescargar(reg, paraCorreo) {
     return Promise.all([prepararRecursos(), completarImagenes(reg, reg.equipo.esquema)]).then(function (res) {
       var bytes = construirPdf(reg, res[0]);
+      // Si hay destinatarios (CONFIG → CORREO_INFORMES), el PDF viaja con la inspección y el servidor lo envía por correo.
+      if (paraCorreo && config && config.CORREO_ACTIVO === 'SI') { try { reg.pdfCorreo = aBase64(bytes); } catch (e) { } }
       descargarPdf(bytes, 'Informe_Inspeccion_' + reg.tag + '_' + reg.semana + '.pdf');
     });
   }
@@ -883,7 +885,11 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
       });
     }).then(function (r) {
       if (!r || !r.exito) { var e = new Error(r && r.error ? r.error : 'respuesta no válida'); e.rechazo = true; throw e; }
-      return r;
+      if (!reg.pdfCorreo) return r;
+      // Correo con el PDF: si falla, la inspección ya quedó guardada (no se reintenta ni se bloquea la cola).
+      return servidor('enviarInformeCorreo', { tag: reg.tag, semana: reg.semana, anio: reg.anio, fecha: reg.fecha, ot: r.ot || reg.ot,
+        nombre: 'Informe_Inspeccion_' + reg.tag + '_' + reg.semana + '.pdf', pdfBase64: reg.pdfCorreo })
+        .then(function () { return r; }, function () { return r; });
     });
   }
 

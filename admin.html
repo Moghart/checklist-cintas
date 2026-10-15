@@ -112,6 +112,17 @@
   .ot-in::placeholder{color:#B0B7C3;font-size:12.5px}
   .ot-chip{display:inline-block;font-size:11.5px;border-radius:12px;padding:2px 8px;background:#E8F1FB;color:var(--azul-osc);white-space:nowrap;margin:1px 0}
   .ot-chip.mal{background:#FDE8E8;color:#B00020;font-weight:700}
+  .cu-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .cu-kpi{display:flex;flex-direction:column;gap:2px;margin-bottom:0}
+  .cu-kpi small{color:var(--muted,#5f6b7a);font-weight:700}.cu-kpi b{font-size:30px;color:#0b2545;line-height:1.1}.cu-kpi span{color:var(--muted,#5f6b7a);font-size:12.5px}
+  .cu-kpis + .caja{margin-top:12px}
+  .cu-svg{width:100%;height:auto;display:block}
+  .cu-ley{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-bottom:6px;align-items:center}
+  .cu-ley i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .cu-t tr[data-cuw]{cursor:pointer}.cu-t tr[data-cuw]:hover td{background:#F3F6FB}.cu-t tr.on td{background:#E8F1FB}
+  .cu-t tr.cu-tot td{border-top:2px solid #9AA4B2;background:#FAFBFC}
+  .cu-p{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+  .cu-p.ok{background:#E3F2E5;color:#1B5E20}.cu-p.med{background:#FFF4CE;color:#7a5a00}.cu-p.mal{background:#FDE8E8;color:#B00020}
   .ot-pie{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff;padding:10px 12px;margin:8px 0 14px;border-radius:var(--radio);box-shadow:0 -2px 8px rgba(0,0,0,.08);z-index:5}
   .ot-carga{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .ot-pto{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--azul-osc);background:#E8F1FB;border-radius:14px;padding:5px 12px}
@@ -206,6 +217,50 @@ function descargarBase64(b64, nombre, tipo) {
   var a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
   return url;
 }
+/* ---------- Cumplimiento semanal (tarjeta de Inicio). La misma función está copiada en pwa2/index.html ---------- */
+function cumplTarjeta(c, enlace) {
+  if (!document.getElementById('cuCss')) {
+    var st = document.createElement('style'); st.id = 'cuCss';
+    st.textContent = '.cu-cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.cu-cab b{font-size:15px;color:#0b2545}.cu-sub{color:#5f6b7a;font-size:12.5px;flex:1}' +
+      '.cu-fila{display:grid;grid-template-columns:minmax(120px,170px) 1fr auto;gap:10px;align-items:center;margin:6px 0;font-size:13.5px}' +
+      '.cu-barra{height:12px;background:#E6EAF0;border-radius:6px;overflow:hidden}.cu-barra i{display:block;height:100%;border-radius:6px}' +
+      '.cu-n{white-space:nowrap;font-variant-numeric:tabular-nums}.cu-n small{color:#5f6b7a;margin-left:4px}' +
+      '.cu-pend{margin-top:8px;font-size:12.5px;line-height:1.9}.cu-chip{display:inline-block;border-radius:10px;padding:0 8px;margin:0 3px 0 0;background:#FDE7E7;color:#9C0006;border:1px solid #F4B6B6;white-space:nowrap}' +
+      '.cu-chip.e{background:#FFF1E0;color:#7A4100;border-color:#F3C891}.cu-ant{color:#5f6b7a;font-size:12px;margin-top:6px}' +
+      '@media (max-width:520px){.cu-fila{grid-template-columns:1fr auto}.cu-fila .cu-barra{grid-column:1/-1;grid-row:2}}';
+    document.head.appendChild(st);
+  }
+  var S = c.semanas || [], w = S[S.length - 1], ant = S.length > 1 ? S[S.length - 2] : null;
+  if (!w) return '';
+  function color(p) { return p === null ? '#9AA4B2' : p >= 90 ? '#2E7D32' : p >= 60 ? '#E0A100' : '#C62828'; }
+  function dm(iso) { var p = String(iso).split('-'); return p[2] + '-' + p[1]; }
+  function fila(nom, x, vacio) {
+    if (!x.prog) return '<div class="cu-fila"><span>' + nom + '</span><span class="muted" style="color:#5f6b7a">' + vacio + '</span><span class="cu-n">' + (x.extra ? x.extra + ' hecha' + (x.extra > 1 ? 's' : '') : '') + '</span></div>';
+    return '<div class="cu-fila"><span>' + nom + '</span><div class="cu-barra" title="' + x.hechas + ' de ' + x.prog + '"><i style="width:' + Math.min(100, x.pct) + '%;background:' + color(x.pct) + '"></i></div>' +
+      '<span class="cu-n"><b>' + x.hechas + ' / ' + x.prog + '</b><small>' + x.pct + '%</small>' + (x.extra ? '<small>+' + x.extra + ' sin OT</small>' : '') + '</span></div>';
+  }
+  var actual = c.hoy && w.anio === c.hoy.anio && w.semana === c.hoy.semana;
+  var quedan = actual && c.hoyIso ? Math.round((Date.parse(w.hasta) - Date.parse(c.hoyIso)) / 86400000) : -1;
+  var h = '<div class="cu-cab"><b>📊 Cumplimiento ' + (actual ? 'de esta semana' : 'semana') + ' ' + w.etiqueta + '</b><span class="cu-sub">' + dm(w.desde) + ' al ' + dm(w.hasta) +
+    (quedan > 0 ? ' · quedan ' + quedan + (quedan === 1 ? ' día' : ' días') : quedan === 0 ? ' · último día' : '') + '</span>' +
+    (enlace ? '<a class="btn sm" href="' + enlace + '"' + (enlace.charAt(0) === '#' ? ' data-cupanel="1"' : '') + '>Ver panel</a>' : '') + '</div>';
+  h += fila('📋 Pauta de inspección', w.insp, 'Sin pautas programadas');
+  h += fila('📏 Medición de espesores', w.esp, 'Sin OT de espesores esta semana');
+  var pi = (c.detalle || []).filter(function (e) { return e.insp.prog && !e.insp.hecha; });
+  var pe = (c.detalle || []).filter(function (e) { return e.esp.prog && !e.esp.hecha; });
+  if (pi.length || pe.length) {
+    var chips = function (l, cls, ic) {
+      var m = 14, t = l.slice(0, m).map(function (e) { return '<span class="cu-chip' + cls + '" title="' + esc(e.nombre) + (e[cls ? 'esp' : 'insp'].ot ? ' · OT ' + esc(e[cls ? 'esp' : 'insp'].ot) : '') + '">' + ic + esc(e.tag) + '</span>'; }).join('');
+      return t + (l.length > m ? ' <span style="color:#5f6b7a">y ' + (l.length - m) + ' más</span>' : '');
+    };
+    h += '<div class="cu-pend"><b style="color:#9C0006">Faltan:</b> ' + chips(pi, '', '') + (pe.length ? ' ' + chips(pe, ' e', '📏 ') : '') + '</div>';
+  } else if (w.insp.prog || w.esp.prog) h += '<div class="cu-pend" style="color:#2E7D32"><b>✔ Todo lo programado está hecho.</b></div>';
+  if (w.insp.base === 'PLAN') h += '<div class="cu-ant">Sin OT cargadas para esta semana: la pauta se compara con el plan semanal (INSP_PLAN).</div>';
+  if (ant) h += '<div class="cu-ant">Semana anterior ' + ant.etiqueta + ': pauta ' + (ant.insp.prog ? ant.insp.hechas + '/' + ant.insp.prog + ' (' + ant.insp.pct + '%)' : '—') +
+    ' · espesores ' + (ant.esp.prog ? ant.esp.hechas + '/' + ant.esp.prog + ' (' + ant.esp.pct + '%)' : '—') + '</div>';
+  return '<div class="caja" id="cajaCumpl">' + h + '</div>';
+}
+
 function logosHtml(L) {
   if (!L || (!L.izq && !L.der)) return '';
   return '<span class="logos-top">' + (L.izq ? '<img src="' + L.izq + '" alt="msmin by SGS">' : '') + (L.der ? '<img src="' + L.der + '" alt="CODELCO">' : '') + '</span>';
@@ -229,6 +284,7 @@ function iniciar() {
     if (TABLAS.tablas.length) tabs.push(['datos', '✎ Datos']);
     if (INI.sesion.rol !== 'NINGUNO') tabs.push(['equipos', '🏭 Catálogo de equipos']);
     if (INI.sesion.rol !== 'NINGUNO') tabs.push(['ots', '📅 OT semanales']);
+    if (INI.sesion.rol !== 'NINGUNO') tabs.push(['cumpl', '📊 Cumplimiento']);
     if (INI.sesion.rol === 'ADMIN') tabs.push(['usuarios', '👥 Usuarios y permisos']);
     $('#tabs').innerHTML = tabs.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('');
     $$('#tabs button').forEach(function (b) { b.onclick = function () { abrirTab(b.dataset.t); }; });
@@ -250,6 +306,7 @@ function abrirTab(t) {
   if (t === 'equipos') cargarEquipos();
   if (t === 'usuarios') cargarUsuarios();
   if (t === 'ots') cargarOts();
+  if (t === 'cumpl') cargarCumpl();
 }
 
 /* =================================================================== INFORMES */
@@ -385,6 +442,113 @@ function eliminarFila(f) {
   if (!confirm('¿Eliminar el registro ' + clave + ' de "' + DT.titulo + '"?\n\nQuedará una copia en la hoja LOG.' +
       (DT.nombre === 'ESP_MUESTREOS' ? '\nSi solo quiere descartarlo de los cálculos, mejor edítelo y ponga VALIDO = NO.' : ''))) return;
   llamar('datosEliminar', [DT.nombre, f._fila, f._firma], 'Eliminando y recalculando…').then(function (r) { toast(r.mensaje); cargarTabla(); });
+}
+
+/* =================================================================== CUMPLIMIENTO (programado vs hecho) */
+var CU = null, CU_N = 12, CU_SEL = null;
+function cargarCumpl(n) {
+  if (n) CU_N = n;
+  try { if (!n) CU_N = +localStorage.getItem('cu_n') || CU_N; else localStorage.setItem('cu_n', String(n)); } catch (e) { }
+  $('#view').innerHTML = '<div class="vacio">Calculando cumplimiento…</div>';
+  api('cumplimiento', '', '', CU_N).then(function (d) { CU = d; CU_SEL = null; pintarCumpl(); },
+    function (e) { $('#view').innerHTML = '<div class="vacio" style="color:#C00000">' + esc(e.message) + '</div>'; });
+}
+function cuPct(p) { return p === null || p === undefined ? '—' : p + '%'; }
+function cuSuma(l, k) {
+  var x = { prog: 0, hechas: 0, extra: 0 };
+  l.forEach(function (w) { x.prog += w[k].prog; x.hechas += w[k].hechas; x.extra += w[k].extra; });
+  x.pct = x.prog ? Math.round(x.hechas / x.prog * 100) : null; return x;
+}
+/** Barras agrupadas: % de cumplimiento por semana, Pauta y Espesores (una sola escala 0-100 %). */
+function cuGrafico(S) {
+  var W = 760, H = 230, iz = 36, de = 8, ar = 14, ab = 34, n = S.length, g = (W - iz - de) / n;
+  var bw = Math.max(4, Math.min(22, (g - 10) / 2)), y = function (p) { return ar + (H - ar - ab) * (1 - p / 100); };
+  var C = { insp: '#2F5597', esp: '#E08A2C' };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="cu-svg" role="img" aria-label="Cumplimiento por semana">';
+  [0, 50, 90, 100].forEach(function (p) {
+    h += '<line x1="' + iz + '" x2="' + (W - de) + '" y1="' + y(p) + '" y2="' + y(p) + '" stroke="' + (p === 90 ? '#9AA4B2' : '#E6EAF0') + '"' + (p === 90 ? ' stroke-dasharray="4 4"' : '') + '/>' +
+      '<text x="' + (iz - 6) + '" y="' + (y(p) + 4) + '" text-anchor="end" font-size="11" fill="#5f6b7a">' + p + '%</text>';
+  });
+  S.forEach(function (w, i) {
+    var cx = iz + g * i + g / 2;
+    ['insp', 'esp'].forEach(function (k, j) {
+      var x = w[k], bx = cx + (j ? 1 : -bw - 1);
+      if (!x.prog) { h += '<text x="' + (bx + bw / 2) + '" y="' + (y(0) - 3) + '" text-anchor="middle" font-size="9" fill="#9AA4B2">–</text>'; return; }
+      var top = y(Math.min(100, x.pct)), alto = Math.max(1, y(0) - top), r = Math.min(4, bw / 2, alto);
+      h += '<path d="M' + bx + ' ' + y(0) + 'V' + (top + r) + 'Q' + bx + ' ' + top + ' ' + (bx + r) + ' ' + top + 'H' + (bx + bw - r) + 'Q' + (bx + bw) + ' ' + top + ' ' + (bx + bw) + ' ' + (top + r) + 'V' + y(0) + 'Z" fill="' + C[k] + '"/>';
+    });
+    h += '<rect x="' + (iz + g * i) + '" y="' + ar + '" width="' + g + '" height="' + (H - ar - ab) + '" fill="transparent" data-cuw="' + i + '" style="cursor:pointer"><title>' +
+      w.etiqueta + ' ' + w.anio + ' · Pauta ' + (w.insp.prog ? w.insp.hechas + '/' + w.insp.prog + ' (' + w.insp.pct + '%)' : 'sin programa') +
+      ' · Espesores ' + (w.esp.prog ? w.esp.hechas + '/' + w.esp.prog + ' (' + w.esp.pct + '%)' : 'sin OT') + '</title></rect>';
+    h += '<text x="' + cx + '" y="' + (H - ab + 16) + '" text-anchor="middle" font-size="11" fill="' + (CU_SEL === i ? '#0b2545' : '#5f6b7a') + '"' + (CU_SEL === i ? ' font-weight="700"' : '') + '>' + w.etiqueta + '</text>';
+  });
+  h += '<line x1="' + iz + '" x2="' + (W - de) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="#9AA4B2"/></svg>';
+  return h;
+}
+function pintarCumpl() {
+  var d = CU, S = d.semanas, ti = cuSuma(S, 'insp'), te = cuSuma(S, 'esp');
+  var h = '<div class="toolbar"><span class="titulo">Cumplimiento</span><span class="muted">Período:</span>' +
+    [4, 8, 12, 26].map(function (n) { return '<button class="btn sm' + (n === CU_N ? ' pri' : '') + '" data-cun="' + n + '">' + n + ' semanas</button>'; }).join('') +
+    '<span class="sp"></span><button class="btn sm" id="cuCsv">⬇ Excel (CSV)</button></div>';
+  h += '<div class="cu-kpis">' +
+    '<div class="caja cu-kpi"><small>📋 Pauta de inspección</small><b>' + cuPct(ti.pct) + '</b><span>' + ti.hechas + ' de ' + ti.prog + ' programadas' + (ti.extra ? ' · +' + ti.extra + ' sin programar' : '') + '</span></div>' +
+    '<div class="caja cu-kpi"><small>📏 Medición de espesores</small><b>' + cuPct(te.pct) + '</b><span>' + te.hechas + ' de ' + te.prog + ' con OT' + (te.extra ? ' · +' + te.extra + ' sin OT' : '') + '</span></div>' +
+    '<div class="caja cu-kpi"><small>Período</small><b style="font-size:18px">' + fmtF(S[0].desde) + ' al ' + fmtF(S[S.length - 1].hasta) + '</b><span>' + S.length + ' semanas (ISO, lunes a domingo)</span></div></div>';
+  h += '<div class="caja"><div class="cu-ley"><span><i style="background:#2F5597"></i>Pauta de inspección</span><span><i style="background:#E08A2C"></i>Medición de espesores</span>' +
+    '<span class="muted">— línea punteada: meta 90 % · toque una semana para ver el detalle</span></div>' + cuGrafico(S) + '</div>';
+  h += '<div class="caja"><h2>Semana a semana</h2><div class="scroll-x"><table class="t cu-t"><tr><th>Semana</th><th>Fechas</th><th>Pauta<br><small>hechas / programadas</small></th><th>%</th><th>Espesores<br><small>hechas / con OT</small></th><th>%</th><th>Sin programar</th></tr>' +
+    S.slice().reverse().map(function (w) {
+      var i = S.indexOf(w);
+      return '<tr data-cuw="' + i + '" class="' + (CU_SEL === i ? 'on' : '') + '"><td><b>' + w.etiqueta + '</b> <small class="muted">' + w.anio + '</small></td><td><small>' + fmtF(w.desde) + ' al ' + fmtF(w.hasta) + '</small></td>' +
+        '<td>' + (w.insp.prog ? w.insp.hechas + ' / ' + w.insp.prog : '<span class="muted">' + (w.insp.base === 'SIN_DATOS' ? 'sin registros' : '—') + '</span>') + (w.insp.base === 'PLAN' && w.insp.prog ? ' <small class="muted" title="Sin OT cargadas: se usa el plan semanal">(plan)</small>' : '') + '</td>' +
+        '<td>' + cuCelda(w.insp.pct) + '</td><td>' + (w.esp.prog ? w.esp.hechas + ' / ' + w.esp.prog : '<span class="muted">—</span>') + '</td><td>' + cuCelda(w.esp.pct) + '</td>' +
+        '<td>' + ([w.insp.extra ? w.insp.extra + ' pauta' + (w.insp.extra > 1 ? 's' : '') : '', w.esp.extra ? w.esp.extra + ' espesor' + (w.esp.extra > 1 ? 'es' : '') : ''].filter(String).join(' · ') || '<span class="muted">—</span>') + '</td></tr>';
+    }).join('') +
+    '<tr class="cu-tot"><td colspan="2"><b>Total del período</b></td><td><b>' + ti.hechas + ' / ' + ti.prog + '</b></td><td>' + cuCelda(ti.pct) + '</td><td><b>' + te.hechas + ' / ' + te.prog + '</b></td><td>' + cuCelda(te.pct) + '</td><td>' + (ti.extra + te.extra || '') + '</td></tr>' +
+    '</table></div></div><div id="cuDet"></div>';
+  $('#view').innerHTML = h;
+  $$('[data-cun]').forEach(function (b) { b.onclick = function () { cargarCumpl(+b.dataset.cun); }; });
+  $$('[data-cuw]').forEach(function (el) { el.onclick = function () { verSemanaCumpl(+el.dataset.cuw); }; });
+  $('#cuCsv').onclick = csvCumpl;
+  if (CU_SEL === null) pintarDetalleCumpl(S[S.length - 1], d.detalle);
+}
+function cuCelda(p) {
+  if (p === null || p === undefined) return '<span class="muted">—</span>';
+  var c = p >= 90 ? 'ok' : p >= 60 ? 'med' : 'mal';
+  return '<span class="cu-p ' + c + '">' + (c === 'ok' ? '✔ ' : c === 'mal' ? '✖ ' : '● ') + p + '%</span>';
+}
+function verSemanaCumpl(i) {
+  var w = CU.semanas[i]; CU_SEL = i;
+  $$('.cu-t tr[data-cuw]').forEach(function (tr) { tr.classList.toggle('on', +tr.dataset.cuw === i); });
+  $('#cuDet').innerHTML = '<div class="vacio">Cargando detalle de ' + w.etiqueta + '…</div>';
+  api('cumplimiento', w.anio, w.semana, 1).then(function (r) { pintarDetalleCumpl(w, r.detalle); $('#cuDet').scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    function (e) { $('#cuDet').innerHTML = '<div class="vacio" style="color:#C00000">' + esc(e.message) + '</div>'; });
+}
+function pintarDetalleCumpl(w, det) {
+  function est(x, sinProg) {
+    if (x.prog) return x.hecha ? '<span class="cu-p ok">✔ Hecha</span>' : '<span class="cu-p mal">✖ Falta</span>';
+    return x.hecha ? '<span class="cu-p med">● Hecha sin ' + sinProg + '</span>' : '<span class="muted">—</span>';
+  }
+  var orden = det.slice().sort(function (a, b) {
+    var fa = (a.insp.prog && !a.insp.hecha) || (a.esp.prog && !a.esp.hecha), fb = (b.insp.prog && !b.insp.hecha) || (b.esp.prog && !b.esp.hecha);
+    return (fb ? 1 : 0) - (fa ? 1 : 0);
+  });
+  $('#cuDet').innerHTML = '<div class="caja"><h2>Detalle semana ' + w.etiqueta + ' · ' + w.anio + ' <small class="muted">' + fmtF(w.desde) + ' al ' + fmtF(w.hasta) + '</small></h2>' +
+    (w.insp.base === 'PLAN' ? '<p class="hint">Esta semana no tiene OT de inspección cargadas: la pauta se compara con el plan semanal (INSP_PLAN).</p>' : '') +
+    '<div class="scroll-x"><table class="t"><tr><th>Equipo</th><th>OT inspección</th><th>Pauta</th><th>OT espesores</th><th>Espesores</th></tr>' +
+    orden.map(function (e) {
+      return '<tr><td style="white-space:nowrap"><b>' + esc(e.tag) + '</b><br><small class="muted">' + esc(e.nombre) + '</small></td><td>' + (esc(e.insp.ot) || '<span class="muted">—</span>') + '</td><td>' + est(e.insp, 'programar') + '</td>' +
+        '<td>' + (esc(e.esp.ot) || '<span class="muted">—</span>') + '</td><td>' + est(e.esp, 'OT') + '</td></tr>';
+    }).join('') + '</table></div></div>';
+}
+function csvCumpl() {
+  var q = function (v) { v = v === null || v === undefined ? '' : String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var l = [['Año', 'Semana', 'Desde', 'Hasta', 'Pauta programadas', 'Pauta hechas', 'Pauta %', 'Pauta sin programar', 'Espesores con OT', 'Espesores hechos', 'Espesores %', 'Espesores sin OT', 'Base programa pauta']];
+  CU.semanas.forEach(function (w) {
+    l.push([w.anio, w.etiqueta, fmtF(w.desde), fmtF(w.hasta), w.insp.prog, w.insp.hechas, w.insp.pct, w.insp.extra, w.esp.prog, w.esp.hechas, w.esp.pct, w.esp.extra, w.insp.base === 'PLAN' ? 'Plan semanal' : 'OT cargadas']);
+  });
+  var txt = '\ufeff' + l.map(function (f) { return f.map(q).join(';'); }).join('\r\n');
+  descargarBase64(btoa(unescape(encodeURIComponent(txt))), 'Cumplimiento_' + CU.semanas[0].etiqueta + '_' + CU.semanas[CU.semanas.length - 1].etiqueta + '.csv', 'text/csv');
 }
 
 /* =================================================================== OT SEMANALES */

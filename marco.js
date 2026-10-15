@@ -17,6 +17,7 @@
     flash: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
     catalogo: '<path d="M3 21V9l6-4v4l6-4v4l6-4v16z"/><path d="M7 17h2"/><path d="M11 17h2"/><path d="M15 17h2"/>',
     ots: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/><path d="M14 15h2"/>',
+    cumpl: '<path d="M3 3v18h18"/><path d="M7 15v2"/><path d="M11 11v6"/><path d="M15 8v9"/><path d="M19 5v12"/>',
     admin: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
     mas: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
     salir: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
@@ -31,6 +32,7 @@
     { id: 'flash', t: 'Reporte Flash', href: 'flash.html', g: 'a', m: 'FLASH' },
     { id: 'catalogo', t: 'Catálogo de equipos', href: 'admin.html?tab=equipos', g: 'g' },
     { id: 'ots', t: 'OT semanales', href: 'admin.html?tab=ots', g: 'g' },
+    { id: 'cumpl', t: 'Cumplimiento', href: 'admin.html?tab=cumpl', g: 'g' },
     { id: 'admin', t: 'Administración', href: 'admin.html', g: 'g' }
   ];
   var BARRA = ['inicio', 'checklist', 'mapeo', 'espesores'];
@@ -45,6 +47,7 @@
     var app = CFG.app || 'inicio';
     if (app === 'admin' && /[?&]tab=equipos/.test(location.search)) return 'catalogo';
     if (app === 'admin' && /[?&]tab=ots/.test(location.search)) return 'ots';
+    if (app === 'admin' && /[?&]tab=cumpl/.test(location.search)) return 'cumpl';
     return app;
   }
   function iniciales(n) { return String(n || '?').replace(/@.*/, '').split(/[\s._-]+/).filter(String).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?'; }
