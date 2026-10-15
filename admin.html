@@ -217,48 +217,29 @@ function descargarBase64(b64, nombre, tipo) {
   var a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
   return url;
 }
-/* ---------- Cumplimiento semanal (tarjeta de Inicio). La misma función está copiada en pwa2/index.html ---------- */
+/* ---------- Cumplimiento semanal (tarjeta compacta de Inicio). La misma función está copiada en pwa2/index.html ---------- */
 function cumplTarjeta(c, enlace) {
   if (!document.getElementById('cuCss')) {
     var st = document.createElement('style'); st.id = 'cuCss';
-    st.textContent = '.cu-cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.cu-cab b{font-size:15px;color:#0b2545}.cu-sub{color:#5f6b7a;font-size:12.5px;flex:1}' +
-      '.cu-fila{display:grid;grid-template-columns:minmax(120px,170px) 1fr auto;gap:10px;align-items:center;margin:6px 0;font-size:13.5px}' +
-      '.cu-barra{height:12px;background:#E6EAF0;border-radius:6px;overflow:hidden}.cu-barra i{display:block;height:100%;border-radius:6px}' +
-      '.cu-n{white-space:nowrap;font-variant-numeric:tabular-nums}.cu-n small{color:#5f6b7a;margin-left:4px}' +
-      '.cu-pend{margin-top:8px;font-size:12.5px;line-height:1.9}.cu-chip{display:inline-block;border-radius:10px;padding:0 8px;margin:0 3px 0 0;background:#FDE7E7;color:#9C0006;border:1px solid #F4B6B6;white-space:nowrap}' +
-      '.cu-chip.e{background:#FFF1E0;color:#7A4100;border-color:#F3C891}.cu-ant{color:#5f6b7a;font-size:12px;margin-top:6px}' +
-      '@media (max-width:520px){.cu-fila{grid-template-columns:1fr auto}.cu-fila .cu-barra{grid-column:1/-1;grid-row:2}}';
+    st.textContent = '#cajaCumpl{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;margin-top:12px}' +
+      '.cu-tit{flex:1;min-width:180px}.cu-tit b{color:#0b2545;font-size:15px}.cu-tit small{display:block;color:#5f6b7a;font-size:12px}' +
+      '.cu-kpi2{display:flex;align-items:center;gap:8px;border:1px solid #E1E6ED;border-radius:10px;padding:6px 12px;white-space:nowrap}' +
+      '.cu-kpi2 span{font-size:13px;color:#1d2330}.cu-kpi2 b{font-size:20px;font-variant-numeric:tabular-nums}.cu-kpi2 small{color:#5f6b7a;font-size:12px}' +
+      '.cu-kpi2 i{width:10px;height:10px;border-radius:50%;display:inline-block}' +
+      '@media (max-width:520px){.cu-kpi2{flex:1}}';
     document.head.appendChild(st);
   }
-  var S = c.semanas || [], w = S[S.length - 1], ant = S.length > 1 ? S[S.length - 2] : null;
+  var S = c.semanas || [], w = S[S.length - 1];
   if (!w) return '';
   function color(p) { return p === null ? '#9AA4B2' : p >= 90 ? '#2E7D32' : p >= 60 ? '#E0A100' : '#C62828'; }
-  function dm(iso) { var p = String(iso).split('-'); return p[2] + '-' + p[1]; }
-  function fila(nom, x, vacio) {
-    if (!x.prog) return '<div class="cu-fila"><span>' + nom + '</span><span class="muted" style="color:#5f6b7a">' + vacio + '</span><span class="cu-n">' + (x.extra ? x.extra + ' hecha' + (x.extra > 1 ? 's' : '') : '') + '</span></div>';
-    return '<div class="cu-fila"><span>' + nom + '</span><div class="cu-barra" title="' + x.hechas + ' de ' + x.prog + '"><i style="width:' + Math.min(100, x.pct) + '%;background:' + color(x.pct) + '"></i></div>' +
-      '<span class="cu-n"><b>' + x.hechas + ' / ' + x.prog + '</b><small>' + x.pct + '%</small>' + (x.extra ? '<small>+' + x.extra + ' sin OT</small>' : '') + '</span></div>';
+  function kpi(nom, x) {
+    return '<div class="cu-kpi2" title="' + (x.prog ? x.hechas + ' de ' + x.prog + ' programadas' : 'Sin programa esta semana') + '"><i style="background:' + color(x.prog ? x.pct : null) + '"></i>' +
+      '<span>' + nom + '</span><b>' + (x.prog ? x.pct + '%' : '—') + '</b><small>' + (x.prog ? x.hechas + '/' + x.prog : '') + '</small></div>';
   }
   var actual = c.hoy && w.anio === c.hoy.anio && w.semana === c.hoy.semana;
-  var quedan = actual && c.hoyIso ? Math.round((Date.parse(w.hasta) - Date.parse(c.hoyIso)) / 86400000) : -1;
-  var h = '<div class="cu-cab"><b>📊 Cumplimiento ' + (actual ? 'de esta semana' : 'semana') + ' ' + w.etiqueta + '</b><span class="cu-sub">' + dm(w.desde) + ' al ' + dm(w.hasta) +
-    (quedan > 0 ? ' · quedan ' + quedan + (quedan === 1 ? ' día' : ' días') : quedan === 0 ? ' · último día' : '') + '</span>' +
-    (enlace ? '<a class="btn sm" href="' + enlace + '"' + (enlace.charAt(0) === '#' ? ' data-cupanel="1"' : '') + '>Ver panel</a>' : '') + '</div>';
-  h += fila('📋 Pauta de inspección', w.insp, 'Sin pautas programadas');
-  h += fila('📏 Medición de espesores', w.esp, 'Sin OT de espesores esta semana');
-  var pi = (c.detalle || []).filter(function (e) { return e.insp.prog && !e.insp.hecha; });
-  var pe = (c.detalle || []).filter(function (e) { return e.esp.prog && !e.esp.hecha; });
-  if (pi.length || pe.length) {
-    var chips = function (l, cls, ic) {
-      var m = 14, t = l.slice(0, m).map(function (e) { return '<span class="cu-chip' + cls + '" title="' + esc(e.nombre) + (e[cls ? 'esp' : 'insp'].ot ? ' · OT ' + esc(e[cls ? 'esp' : 'insp'].ot) : '') + '">' + ic + esc(e.tag) + '</span>'; }).join('');
-      return t + (l.length > m ? ' <span style="color:#5f6b7a">y ' + (l.length - m) + ' más</span>' : '');
-    };
-    h += '<div class="cu-pend"><b style="color:#9C0006">Faltan:</b> ' + chips(pi, '', '') + (pe.length ? ' ' + chips(pe, ' e', '📏 ') : '') + '</div>';
-  } else if (w.insp.prog || w.esp.prog) h += '<div class="cu-pend" style="color:#2E7D32"><b>✔ Todo lo programado está hecho.</b></div>';
-  if (w.insp.base === 'PLAN') h += '<div class="cu-ant">Sin OT cargadas para esta semana: la pauta se compara con el plan semanal (INSP_PLAN).</div>';
-  if (ant) h += '<div class="cu-ant">Semana anterior ' + ant.etiqueta + ': pauta ' + (ant.insp.prog ? ant.insp.hechas + '/' + ant.insp.prog + ' (' + ant.insp.pct + '%)' : '—') +
-    ' · espesores ' + (ant.esp.prog ? ant.esp.hechas + '/' + ant.esp.prog + ' (' + ant.esp.pct + '%)' : '—') + '</div>';
-  return '<div class="caja" id="cajaCumpl">' + h + '</div>';
+  return '<div class="caja" id="cajaCumpl"><div class="cu-tit"><b>📊 Cumplimiento ' + w.etiqueta + '</b><small>' + (actual ? 'Semana actual' : 'Semana ' + w.anio) + '</small></div>' +
+    kpi('📋 Pauta', w.insp) + kpi('📏 Espesores', w.esp) +
+    (enlace ? '<a class="btn sm" href="' + enlace + '"' + (enlace.charAt(0) === '#' ? ' data-cupanel="1"' : '') + '>Ver detalle</a>' : '') + '</div>';
 }
 
 function logosHtml(L) {

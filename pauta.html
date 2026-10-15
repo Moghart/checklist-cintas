@@ -147,7 +147,7 @@
           </div>
           <div class="form-group">
             <label for="inSemana">Semana</label>
-            <input type="text" id="inSemana" maxlength="10" placeholder="ej: W39">
+            <select id="inSemana"></select>
           </div>
         </div>
         <div class="fila">
@@ -217,11 +217,11 @@
         <div class="fila">
           <div class="form-group">
             <label for="filSemana">Semana</label>
-            <input type="text" id="filSemana" maxlength="10" placeholder="ej: W39">
+            <select id="filSemana"><option value="">-- Seleccione la semana --</option></select>
           </div>
           <div class="form-group">
             <label for="filAnio">Año</label>
-            <input type="number" id="filAnio" min="2020" max="2100">
+            <select id="filAnio"></select>
           </div>
         </div>
         <button type="button" class="btn azul" id="btnInforme" style="margin-top:4px">GENERAR Y DESCARGAR PDF</button>
@@ -290,7 +290,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
   var LADO_FOTO = 1100, LADO_ANEXO = 1900;      // px del lado mayor después de comprimir
 
   var db = null, sincronizando = false;
-  var equipos = {}, programa = {}, config = {};
+  var equipos = {}, programa = {}, config = {}, guardadas = {};
   var insp = null;
   var destinoFoto = null;                       // {tipo:'item', i} | {tipo:'medicion'} | {tipo:'mapeo'}
   var cacheImg = {};                            // url de Drive -> {d,w,h}
@@ -317,7 +317,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     actualizarEstadoRed();
     var hoy = new Date();
     $('inFecha').value = hoy.getFullYear() + '-' + dos(hoy.getMonth() + 1) + '-' + dos(hoy.getDate());
-    $('filAnio').value = hoy.getFullYear();
+    pintarFiltroSemanas();
     onFechaChange(true);
     var estilo = document.createElement('style');
     estilo.textContent = '.rf-ico{background-image:url(' + RECURSOS.bg1 + ')}';
@@ -334,6 +334,8 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     $('selTag').addEventListener('change', onEquipoChange);
     $('inFecha').addEventListener('change', function () { onFechaChange(true); cargarInspeccionGuardada(); });
     $('inSemana').addEventListener('change', function () { onSemanaChange(); cargarInspeccionGuardada(); });
+    $('filTag').addEventListener('change', pintarFiltroSemanas);
+    $('filAnio').addEventListener('change', pintarFiltroSemanas);
     $('btnTodoNo').addEventListener('click', function () {
       insp.items.forEach(function (it) { if (!it.c) it.c = 'NO'; }); pintarItems();
     });
@@ -398,7 +400,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
 
   function aplicarDatosIniciales(r) {
     equipos = {}; (r.equipos || []).forEach(function (e) { equipos[e.tag] = e; });
-    programa = r.programa || {}; config = r.config || {};
+    programa = r.programa || {}; config = r.config || {}; guardadas = r.guardadas || {};
     [$('selTag'), $('filTag')].forEach(function (sel) {
       var actual = sel.value; sel.innerHTML = '';
       var o0 = document.createElement('option'); o0.value = ''; o0.textContent = '-- Seleccione un TAG --'; sel.appendChild(o0);
@@ -407,7 +409,74 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     });
     if (!insp.responsables.length) { insp.responsables = responsablesPorDefecto(); pintarResponsables(); }
     if (!$('selTag').value) { insp.riesgos = riesgosPorDefecto(); pintarRiesgos(); }
+    pintarSemanas(); pintarFiltroSemanas();
     velo('');
+  }
+
+  /* ---------- Desplegables de semana: semana actual + semanas con OT cargadas (OT semanales) + semanas con inspecciones guardadas ---------- */
+  var MESES_C = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  function lunesIso(anio, n) {
+    var e4 = new Date(anio, 0, 4), dia = e4.getDay() || 7;
+    return new Date(anio, 0, 4 - (dia - 1) + (n - 1) * 7);
+  }
+  function rangoSemana(anio, n) {
+    var l = lunesIso(anio, n), d = new Date(l.getFullYear(), l.getMonth(), l.getDate() + 6);
+    return l.getDate() + (l.getMonth() !== d.getMonth() ? ' ' + MESES_C[l.getMonth()] : '') + ' al ' + d.getDate() + ' ' + MESES_C[d.getMonth()];
+  }
+  function semanasConOt(anio) {
+    var m = {};
+    Object.keys(programa).forEach(function (k) { var p = k.split('|'); if (p.length === 3 && +p[0] === anio) m[+p[1]] = true; });
+    return m;
+  }
+  function semanasGuardadas(anio, tag) {
+    var m = {};
+    Object.keys(guardadas).forEach(function (k) {
+      var p = k.split('|');
+      if (+p[0] === anio && (!tag || guardadas[k].indexOf(tag) >= 0)) m[+p[1]] = guardadas[k].length;
+    });
+    return m;
+  }
+  function opcionesSemana(sel, lista, actual, vacio) {
+    sel.innerHTML = '';
+    if (vacio) { var o0 = document.createElement('option'); o0.value = ''; o0.textContent = vacio; sel.appendChild(o0); }
+    lista.forEach(function (x) { var o = document.createElement('option'); o.value = 'W' + dos(x.n); o.textContent = x.txt; sel.appendChild(o); });
+    if (actual && lista.some(function (x) { return 'W' + dos(x.n) === actual; })) sel.value = actual;
+  }
+  /** Pestaña Inspección: semanas del año de la fecha. Se marca cuáles tienen OT cargada. */
+  function pintarSemanas(forzar) {
+    var anio = anioActual(), hoyN = semanaIso(new Date()), hoyA = new Date().getFullYear();
+    var d = leerFecha($('inFecha').value), deFecha = d ? semanaIso(d) : 0;
+    var ot = semanasConOt(anio), gu = semanasGuardadas(anio), m = {};
+    Object.keys(ot).forEach(function (n) { m[n] = true; });
+    Object.keys(gu).forEach(function (n) { m[n] = true; });
+    if (anio === hoyA) m[hoyN] = true;
+    if (deFecha) m[deFecha] = true;
+    if (forzar) m[forzar] = true;
+    var lista = Object.keys(m).map(Number).filter(function (n) { return n >= 1 && n <= 53; }).sort(function (a, b) { return b - a; }).map(function (n) {
+      return { n: n, txt: 'W' + dos(n) + ' · ' + rangoSemana(anio, n) + (anio === hoyA && n === hoyN ? ' (semana actual)' : '') + (ot[n] ? ' · OT cargadas' : '') };
+    });
+    opcionesSemana($('inSemana'), lista, $('inSemana').value || ('W' + dos(deFecha || hoyN)));
+  }
+  /** Pestaña Descarga: años y semanas que tienen inspecciones guardadas (del TAG elegido). */
+  function pintarFiltroSemanas() {
+    var selA = $('filAnio'), hoyA = new Date().getFullYear(), anios = {};
+    anios[hoyA] = true;
+    Object.keys(guardadas).forEach(function (k) { anios[+k.split('|')[0]] = true; });
+    var aSel = parseInt(selA.value, 10) || hoyA;
+    selA.innerHTML = Object.keys(anios).map(Number).sort(function (a, b) { return b - a; }).map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+    selA.value = aSel;
+    var tag = $('filTag').value, gu = semanasGuardadas(aSel, tag);
+    var lista = Object.keys(gu).map(Number).sort(function (a, b) { return b - a; }).map(function (n) {
+      return { n: n, txt: 'W' + dos(n) + ' · ' + rangoSemana(aSel, n) + (tag ? '' : ' · ' + gu[n] + (gu[n] === 1 ? ' equipo' : ' equipos')) };
+    });
+    opcionesSemana($('filSemana'), lista, $('filSemana').value,
+      lista.length ? '-- Seleccione la semana --' : (tag ? 'Sin inspecciones guardadas de ' + tag + ' en ' + aSel : 'Sin inspecciones guardadas en ' + aSel));
+  }
+  function marcarGuardada(tag, semana, anio) {
+    var k = anio + '|' + numSemana(semana);
+    guardadas[k] = guardadas[k] || [];
+    if (guardadas[k].indexOf(tag) < 0) guardadas[k].push(tag);
+    pintarFiltroSemanas();
   }
 
   function partes(txt) { return String(txt || '').split('|').map(function (s) { return s.trim(); }); }
@@ -438,7 +507,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
   }
   function onFechaChange(recalcular) {
     var d = leerFecha($('inFecha').value);
-    if (d && recalcular) $('inSemana').value = 'W' + dos(semanaIso(d));
+    if (d && recalcular) { pintarSemanas(semanaIso(d)); $('inSemana').value = 'W' + dos(semanaIso(d)); }
     onSemanaChange();
   }
   function onSemanaChange() {
@@ -790,7 +859,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     var eq = equipos[$('selTag').value], n = numSemana($('inSemana').value), fecha = $('inFecha').value;
     if (!eq) { avisar('Seleccione el Tag del equipo.', 'err'); $('selTag').focus(); return; }
     if (!leerFecha(fecha)) { avisar('Indique la fecha de inspección.', 'err'); $('inFecha').focus(); return; }
-    if (!n) { avisar('Indique la semana (ej: W39).', 'err'); $('inSemana').focus(); return; }
+    if (!n) { avisar('Elija la semana.', 'err'); $('inSemana').focus(); return; }
     var sinResp = insp.items.map(function (it, i) { return it.c ? 0 : i + 1; }).filter(Boolean);
     if (sinResp.length) {
       avisar('Faltan por responder ' + sinResp.length + ' punto(s): ' + sinResp.slice(0, 8).join(', ') + (sinResp.length > 8 ? '...' : '') + '.', 'err', 8000);
@@ -835,7 +904,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
 
   function onInformeGuardado() {
     var eq = equipos[$('filTag').value], n = numSemana($('filSemana').value), anio = parseInt($('filAnio').value, 10);
-    if (!eq || !n || !anio) { avisar('Seleccione el Tag, la semana y el año.', 'err'); return; }
+    if (!eq || !n || !anio) { avisar(!eq ? 'Seleccione el Tag.' : 'Elija la semana: solo aparecen las que tienen una inspección guardada.', 'err'); return; }
     if (!navigator.onLine || !hayServidor) { avisar('Se necesita conexión para descargar un informe guardado.', 'err'); return; }
     velo('Buscando inspección...');
     servidor('buscarDatosFormulario', eq.tag, 'W' + dos(n), anio).then(function (r) {
@@ -885,6 +954,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
       });
     }).then(function (r) {
       if (!r || !r.exito) { var e = new Error(r && r.error ? r.error : 'respuesta no válida'); e.rechazo = true; throw e; }
+      try { marcarGuardada(reg.tag, reg.semana, reg.anio); } catch (e2) { }
       if (!reg.pdfCorreo) return r;
       // Correo con el PDF: si falla, la inspección ya quedó guardada (no se reintenta ni se bloquea la cola).
       return servidor('enviarInformeCorreo', { tag: reg.tag, semana: reg.semana, anio: reg.anio, fecha: reg.fecha, ot: r.ot || reg.ot,
