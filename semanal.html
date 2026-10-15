@@ -336,7 +336,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
       var v = cinta(tag), man = 'ingreso manual', reg = 'registro guardado de la semana (sin muestreos en Medición de Espesores)';
       var esp = 'Medición de espesores' + (v.muestreo ? ', último muestreo hasta la semana ' + D.semana + ': ' + v.muestreo.split('-').reverse().join('-') : '');
       var cupo = Math.min(v.fotosPauta.length, Math.max(0, MAX_FOTOS_CINTA - v.propias.length)), omitidas = v.fotosPauta.length - cupo;
-      c.innerHTML = campoTxt('descripcion', 'Descripción de falla', v.descripcion, v.aDesc, v.aDesc ? (v.fuente || 'Pauta de inspección') + ', punto 6.3 componente Cinta' : 'sin observaciones en la pauta: ' + man, 5) +
+      c.innerHTML = campoTxt('descripcion', 'Descripción de falla', v.descripcion, v.aDesc, v.aDesc ? (/Mapeo/.test(v.fuente || '') ? v.fuente : (v.fuente || 'Pauta de inspección') + ', punto 6.3 componente Cinta') : 'sin observaciones en la pauta ni hallazgos en el Mapeo: ' + man, 5) +
         '<div class="campo"><label>Prioridad <span class="origen">— la define el inspector según las observaciones de la pauta' + (v.heredado ? '; se muestra la vigente desde la semana ' + v.desde : '') + '</span></label>' + botonesPrio(v.prioridad) + '</div>' +
         '<div class="rejilla">' +
         campoTxt('fechaCambio', 'Fecha de cambio de cinta', v.fechaCambio, v.aCambio, v.oCambio === 'esp' ? 'Medición de espesores' : (v.oCambio === 'reg' ? reg : man)) +
@@ -964,7 +964,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
       ], detC, 2.3, restoC.length ? 5.85 : 6.55, im[0]);
       else lc.forma(0.5, 2.4, 12.33, 1.0, { fondo: GRIS, redondo: 6400, margen: 0.2, sz: 14, parrafos: [{ t: 'Los ' + D.equipos.length + ' equipos están en prioridad baja o sin prioridad asignada por el inspector.' }] });
       if (restoC.length) resto(lc, restoC, 5.95);
-      lc.pie('Fuente: última pauta de inspección de cada equipo (punto 6.3, componente Cinta) y Medición de Espesores. Prioridad definida por el inspector. Detalle completo en el libro Excel.');
+      lc.pie('Fuente: última pauta de inspección de cada equipo (punto 6.3, componente Cinta), hallazgos abiertos del Mapeo de cintas y Medición de Espesores. Prioridad definida por el inspector. Detalle completo en el libro Excel.');
       L.push(lc);
 
       var lf = new Lamina();
