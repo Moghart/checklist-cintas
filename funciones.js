@@ -45,5 +45,7 @@ window.PUENTE_FUNCIONES = {
 "reimprimirPdfInspeccion": "R",
 "semGuardarReporte": "W",
 "sincronizarInspeccionOffline": "W",
-"subirImagenDrive": "W"
+"subirImagenDrive": "W",
+"tramoCambio": "W",
+"tramoInfo": "R"
 };

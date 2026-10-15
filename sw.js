@@ -3,7 +3,7 @@
  * Guarda la app en el celular para que abra aunque no haya señal.
  * Al publicar cambios en index.html, sube el número de VERSION para forzar la actualización.
  */
-const VERSION = 'inspeccion-cintas-v10';
+const VERSION = 'inspeccion-cintas-v12';
 const ARCHIVOS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const ARCHIVOS = [
   './preparar.js',
   './marco.js',
   './tema.css',
+  './tramos.js',
   './funciones.js',
   './config.js',
   './icons/logo-msmin.jpg',

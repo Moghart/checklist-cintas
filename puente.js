@@ -162,6 +162,8 @@
   }
 
   var OPTIMISTA = {
+    // Cambio / nuevo / unión de tramos: sin señal queda en la bandeja y se registra al volver la señal.
+    tramoCambio: function () { return { valor: { ok: true, enCola: true, mensaje: 'En la bandeja del teléfono' } }; },
     apiSaveHallazgo: function (a) {
       var h = a[0] || {}, id = h.ID_HALLAZGO || tmpId('H');
       return { tmp: h.ID_HALLAZGO ? '' : id, valor: id, parche: parcheCinta(h.ID_CINTA, function (d) {

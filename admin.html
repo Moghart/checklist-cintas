@@ -18,6 +18,7 @@
   <script src="preparar.js"></script>
   <script src="marco.js"></script>
   <link rel="stylesheet" href="tema.css">
+  <script src="tramos.js"></script>
 
   <base target="_top">
   <meta charset="utf-8">
@@ -440,7 +441,9 @@ function modalEquipo(e) {
     '<fieldset><legend>Plan de mantenimiento (Pauta de Inspección)' + (nuevo ? ' — copiado de otro equipo, ajústelo' : '') + '</legend><div class="sub">' + plan + '</div></fieldset>' +
     '<fieldset><legend>Medición de espesores: ' + (e._cintas && e._cintas.length ? 'cintas vigentes' : 'sin cinta registrada') + '</legend>' +
       (e._cintas && e._cintas.length ? '<div class="hint" style="margin-bottom:8px">' + e._cintas.map(esc).join('<br>') + '<br>Para reemplazar una cinta use “Cambio de cinta” en la app de Espesores.</div>' : '') +
-      (ed ? '<label style="text-transform:none;font-weight:400"><input type="checkbox" id="chkCinta" style="width:auto"> Registrar ' + (e._cintas && e._cintas.length ? 'otro tramo' : 'la cinta instalada') + ' (para que aparezca en Medición de espesores)</label>' +
+      (ed && !nuevo && window.TRAMO_FORM ? '<button type="button" class="btn" id="bTramoCat">⇄ Cambio / nuevo tramo</button>' +
+        '<div class="hint" style="margin-top:6px">Reemplazo, tramo nuevo o unión de tramos: se registra de una vez en Mapeo, Medición de espesores y este catálogo.</div>' : '') +
+      (ed && (nuevo || !window.TRAMO_FORM) ? '<label style="text-transform:none;font-weight:400"><input type="checkbox" id="chkCinta" style="width:auto"> Registrar ' + (e._cintas && e._cintas.length ? 'otro tramo' : 'la cinta instalada') + ' (para que aparezca en Medición de espesores)</label>' +
       '<div class="sub" id="cintaCampos" style="display:none;margin-top:8px">' +
         ['tramo|Tramo (ÚNICO, TRAMO 01…)|ÚNICO', 'espec|Especificación (ej: EP2500/5)|' + (fi.TIPO_CINTA || ''), 'fabricante|Fabricante|' + (fi.MARCA || ''), 'grado|Grado cubierta|' + (fi.MODELO_CUBIERTA || ''), 'fechaCambio|Fecha de instalación|',
          'espTotal|Espesor total (mm)|' + (fi.ESP_TOTAL_MM || ''), 'espCarga|Espesor carga (mm)|' + (fi.ESP_CARGA_MM || ''), 'espRet|Espesor retorno (mm)|' + (fi.ESP_RETORNO_MM || ''), 'cables|Cables o telas|' + (fi.CANT_CABLES_TELAS || ''), 'ancho|Ancho (mm)|' + (fi.ANCHO_PULG ? Math.round(fi.ANCHO_PULG * 25.4) : ''),
@@ -452,7 +455,10 @@ function modalEquipo(e) {
     (nuevo ? '<div class="c4 hint">Al guardar, el equipo queda disponible en todas las apps, incluido Mapeo de Cintas.</div>' : '') +
     '</div>';
   modal({ titulo: (nuevo ? 'Nuevo equipo' : 'Equipo ' + esc(e.ID_EQUIPO)) + (ed ? '' : ' · ficha'), cuerpo: cuerpo,
-    alAbrir: function (bg) { if ($('#chkCinta', bg)) $('#chkCinta', bg).onchange = function () { $('#cintaCampos', bg).style.display = this.checked ? '' : 'none'; }; },
+    alAbrir: function (bg) {
+      if ($('#chkCinta', bg)) $('#chkCinta', bg).onchange = function () { $('#cintaCampos', bg).style.display = this.checked ? '' : 'none'; };
+      if ($('#bTramoCat', bg)) $('#bTramoCat', bg).onclick = function () { TRAMO_FORM.abrir({ equipo: e.ID_EQUIPO, alGuardar: function () { var x = bg.querySelector('.modal header button'); if (x) x.click(); cargarEquipos(); } }); };
+    },
     botones: !ed ? [{ txt: 'Cerrar', pri: true }] : [{ txt: 'Cancelar' }, { txt: 'Guardar', pri: true, fn: function (cerrar, b) {
       var bg = b.closest('.modal-bg'), o = leerForm(bg), datos = { _nuevo: nuevo, _plan: {}, _ficha: {}, _cinta: null }, cinta = {};
       Object.keys(o).forEach(function (k) {

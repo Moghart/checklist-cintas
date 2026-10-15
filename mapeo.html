@@ -18,6 +18,7 @@
   <script src="preparar.js"></script>
   <script src="marco.js"></script>
   <link rel="stylesheet" href="tema.css">
+  <script src="tramos.js"></script>
 
   <base target="_top">
   <meta charset="utf-8">
@@ -423,7 +424,8 @@ function renderCinta(){
     <button class="btn" id="bVolver">← Cintas</button>
     <span class="titulo">${esc(c.CODIGO)}</span>
     ${esAdmin()?`<button class="btn" id="bFicha">✎ Ficha técnica</button>`:''}
-    ${ed?`<button class="btn" id="bTramos">⇄ Tramos / cambios</button>
+    ${ed && window.TRAMO_FORM?`<button class="btn" id="bCambioTramo">⇄ Cambio / nuevo tramo</button>`:''}
+    ${ed?`<button class="btn" id="bTramos">${window.TRAMO_FORM?'✎ Tramos (metros y fechas)':'⇄ Tramos / cambios'}</button>
     <button class="btn pri" id="bNuevoH">＋ Nuevo hallazgo</button>`:''}
     <label class="pill ${S.mostrarCerrados?'on':''}" style="cursor:pointer"><input type="checkbox" id="chkCerr" ${S.mostrarCerrados?'checked':''} style="display:none">Mostrar cerrados</label>
     <span class="sp" style="flex:1"></span>
@@ -508,6 +510,7 @@ function renderCinta(){
   $('#bInforme').onclick = modalInforme;
   $('#chkCerr').onchange = e => { S.mostrarCerrados=e.target.checked; renderCinta(); };
   if($('#bFicha')) $('#bFicha').onclick = () => modalFicha(c);
+  if($('#bCambioTramo')) $('#bCambioTramo').onclick = () => TRAMO_FORM.abrir({ equipo: c.ID_EQUIPO || c.ID_CINTA, alGuardar: () => refrescar() });
   if(ed){ $('#bTramos').onclick = modalTramos; $('#bNuevoH').onclick = () => modalHallazgo(null); }
   $$('tr.dato').forEach(r => r.onclick = () => modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===r.dataset.id)));
   $$('[data-hid]').forEach(m => m.addEventListener('click', ev => { ev.stopPropagation(); modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===m.dataset.hid)); }));
