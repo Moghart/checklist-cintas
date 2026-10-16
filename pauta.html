@@ -173,7 +173,7 @@
 
       <div class="seccion">3. Evaluación de parámetros (6.3)</div>
       <div class="card">
-        <div class="ayuda" style="margin:0 0 10px">Para que un punto aparezca en la sección 6.6 del informe debe tener observación <b>y</b> foto.</div>
+        <div class="ayuda" style="margin:0 0 10px">Todo punto con observación aparece en la sección 6.6 del informe; agregue una foto para que salga con su respaldo fotográfico.</div>
         <button type="button" class="mini" id="btnTodoNo">Marcar como NO todo lo que esté sin responder</button>
         <div id="contItems" style="margin-top:12px"></div>
       </div>
@@ -772,7 +772,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     var nota = document.createElement('div'); nota.className = 'ayuda falta';
     function ponerNota() {
       var hayObs = !!it.o.trim(), hayFoto = !!it.f;
-      nota.textContent = hayObs && !hayFoto ? 'Falta la foto: sin ella este punto no aparece en 6.6.'
+      nota.textContent = hayObs && !hayFoto ? 'Sin foto: en 6.6 saldrá con "Sin registro fotográfico".'
                        : !hayObs && hayFoto ? 'Falta la observación: sin ella este punto no aparece en 6.6.' : '';
     }
     ta.addEventListener('input', function () { it.o = ta.value; ponerNota(); });
@@ -1785,7 +1785,7 @@ function graficoEspesores_(doc, b, y, H) {
     var hallazgos = [];
     reg.items.forEach(function (it, i) {
       var obs = String(it.o || '').trim();
-      if (obs && it.f) hallazgos.push({ nombre: ITEMS[i][0], obs: obs, f: it.f });      // 6.6 exige observación Y foto
+      if (obs) hallazgos.push({ nombre: ITEMS[i][0], obs: obs, f: it.f || null });      // 6.6: toda observación; la foto si existe
     });
     var conObs = hallazgos.length > 0 || reg.items.some(function (it) { return String(it.o || '').trim(); });
 
@@ -2045,6 +2045,7 @@ function graficoEspesores_(doc, b, y, H) {
         celda(xf, yy, c6[2], hObs, '');
         // La foto se ajusta dentro de su celda dejando un margen, sin deformarse ni salirse.
         if (hz && hz.f) { if (hz.f.d) pdf.imagen(hz.f, xf + 0.05, yy + 0.05, c6[2] - 0.1, hObs - 0.1); else sinImagen(xf, yy, c6[2], hObs); }
+        else if (hz) pdf.parrafo('Sin registro fotográfico', xf, yy, c6[2], hObs, { tam: 7, color: 'A6A6A6' });
       }
       if (p === paginasObs - 1) pdf.imagenExacta(R.cierre, 0, R.cierre.y, ANCHO, R.cierre.alto);
     }
