@@ -127,7 +127,13 @@
   details.hist{background:#fff;box-shadow:var(--sombra);border-radius:var(--radio);padding:8px 12px;margin-bottom:20px}
   details.hist summary{cursor:pointer;font-weight:700;color:var(--azul)}
   .hist-l{font-size:12px;max-height:300px;overflow:auto}
-  .hist-l div{border-bottom:1px solid #eee;padding:4px 0}
+  .hist-l{font-size:13px;max-height:360px}
+  .hist-l .hf{border-bottom:1px solid #eef1f5;padding:8px 2px}
+  .hist-l .hf-c{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+  .hist-l .hf-c b{color:var(--azul)}.hist-l .hf-c span{color:var(--texto)}
+  .hist-l .hf-c small{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
+  .hist-l .hf-d{color:#3b4656;margin-top:3px;line-height:1.45}
+  .hist-l .hf-d ul{margin:3px 0 0;padding-left:18px}
 
   /* ---------- modal */
   .modal-bg{position:fixed;inset:0;background:rgba(15,25,45,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:24px 10px;overflow:auto}
@@ -491,14 +497,14 @@ function renderCinta(){
     </table>
     </div>
     <div class="leyenda">${(S.init.listas.CRITICIDAD||[]).map(x=>`<span><i style="background:${x.color}"></i>${esc(x.valor)}</span>`).join('')}
-      <span class="muted">· Banda: fila superior = lado izquierdo, centro, fila inferior = lado derecho · Clic en una marca para abrir el hallazgo</span></div>
+      <span class="muted">· Banda negra = cinta sin daños (líneas grises = cantos); cada daño se marca con el color de su criticidad · Fila superior = lado izquierdo, centro, fila inferior = lado derecho · Clic en una marca para abrir el hallazgo</span></div>
 
     <div class="giro"><span>Sentido de giro</span><span class="flecha">${String(c.SENTIDO_GIRO||'IZQUIERDA').toUpperCase()==='DERECHA'?'━━━━━━━━━━━━━━►':'◄━━━━━━━━━━━━━━'}</span></div>
     <div class="scroll-x">${tr.map(t=>htmlTramo(t, hs)).join('') || '<div class="vacio">La cinta no tiene tramos. Agréguelos en “Tramos / cambios”.</div>'}</div>
   </div>
 
   <details class="hist"><summary>Historial de cambios (${S.data.historial.length})</summary>
-    <div class="hist-l">${S.data.historial.map(h=>`<div><b>${esc(h.FECHA)}</b> · ${esc(h.USUARIO)} · <b>${esc(h.ACCION)}</b> ${esc(h.ENTIDAD)} — ${esc(h.DETALLE)}</div>`).join('') || '<div class="muted">Sin registros</div>'}</div>
+    <div class="hist-l">${S.data.historial.slice().sort((x,y)=>histCuando(y.FECHA).key.localeCompare(histCuando(x.FECHA).key)).map(histFila).join('') || '<div class="muted">Sin registros</div>'}</div>
   </details>`;
 
   $('#bVolver').onclick = () => { S.data=null; history.back(); renderInicio(); };
@@ -512,6 +518,44 @@ function renderCinta(){
   $$('[data-hid]').forEach(m => m.addEventListener('click', ev => { ev.stopPropagation(); modalHallazgo(S.data.hallazgos.find(h=>h.ID_HALLAZGO===m.dataset.hid)); }));
 }
 
+
+/* ---------- Historial de cambios en palabras (el LOG guarda el detalle técnico en JSON) ---------- */
+const HIST_ACC = { CAMBIO_TRAMO:'Cambio en tramos', EDITAR:'Edición', CREAR:'Nuevo', ELIMINAR:'Eliminado', IMAGEN:'Imagen', FOTO:'Foto',
+  INFORME:'Informe', INFORME_PDF:'PDF descargado', CERRAR:'Cierre', INSTALAR:'Instalación' };
+const HIST_ENT = { CINTA:'ficha de la cinta', TRAMO:'tramo', HALLAZGO:'hallazgo', FOTO:'foto' };
+const HIST_CAMPOS = { N_TRAMO:'N° tramo', METROS:'metros', FECHA_INSERCION:'fecha de inserción', MEDIDA_INSERTADO_M:'medida insertada (m)', ESTADO:'estado',
+  OBS:'observación', DETALLE:'detalle', CRITICIDAD:'criticidad', TIPO_REPARACION:'reparación', MARCA:'marca', ULTIMO_CAMBIO:'último cambio' };
+function histFecha(v){ const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m? m[3]+'-'+m[2]+'-'+m[1] : String(v||''); }
+/* Fecha del LOG en cualquiera de sus formatos (2026-10-16 17:32 · 16/10/2026 14:04:26 · 09-10-2026T17:17) → texto y clave para ordenar */
+function histCuando(v){
+  const t=String(v||''); let m=t.match(/^(\d{4})-(\d{2})-(\d{2})[T ]?(\d{1,2}:\d{2})?/), d,mo,a,hh;
+  if(m){ a=m[1]; mo=m[2]; d=m[3]; hh=m[4]||''; }
+  else if((m=t.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})[T ]?(\d{1,2}:\d{2})?/))){ d=('0'+m[1]).slice(-2); mo=('0'+m[2]).slice(-2); a=m[3]; hh=m[4]||''; }
+  else return { txt:t, key:'' };
+  if(hh) hh=('0'+hh).slice(-5);
+  return { txt: d+'-'+mo+'-'+a+(hh?' '+hh:''), key: a+mo+d+hh };
+}
+function histQuien(u){ u=String(u||''); return u.includes('@') ? u.split('@')[0] : (u||'—'); }
+function histDetalle(h){
+  const t=String(h.DETALLE||'').trim();
+  let o=null; if(/^[\[{]/.test(t)){ try{ o=JSON.parse(t); }catch(e){} }
+  if(!o) return esc(t);
+  if(h.ACCION==='CAMBIO_TRAMO'){
+    const tipo={CINTA:'Cambio de cinta completa',REEMPLAZO:'Reemplazo de tramo',NUEVO:'Tramo nuevo',UNIR:'Unión de tramos',DIVIDIR:'División de tramo'}[o.tipo]||o.tipo;
+    const res=(o.resumen||[]).map(x=>String(x).replace(/^Mapeo:\s*/,'')).filter(x=>x.toLowerCase()!==String(tipo).toLowerCase());
+    return `<b>${esc(tipo)}</b>${o.fecha?' del '+esc(histFecha(o.fecha)):''}${res.length?'<ul>'+res.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':''}`;
+  }
+  const d = o.despues || o;
+  const partes = Object.keys(HIST_CAMPOS).filter(k=>d[k]!==undefined && d[k]!==null && d[k]!=='').map(k=>HIST_CAMPOS[k]+': '+esc(/FECHA/.test(k)?histFecha(d[k]):d[k]));
+  return partes.length ? partes.join(' · ') : '';
+}
+function histFila(h){
+  const esCinta = h.ACCION==='CAMBIO_TRAMO' && /"tipo"\s*:\s*"CINTA"/.test(String(h.DETALLE||''));
+  const acc = esCinta ? 'Cambio de cinta' : (HIST_ACC[h.ACCION] || String(h.ACCION||'').toLowerCase());
+  const ent = esCinta ? '' : (HIST_ENT[h.ENTIDAD] || String(h.ENTIDAD||'').toLowerCase());
+  const det = histDetalle(h);
+  return `<div class="hf"><div class="hf-c"><b>${esc(acc)}</b> <span>${esc(ent)}</span><small>${esc(histCuando(h.FECHA).txt)} · ${esc(histQuien(h.USUARIO))}</small></div>${det?`<div class="hf-d">${det}</div>`:''}</div>`;
+}
 
 function htmlTramo(t, hs){
   const L=n(t.METROS);
@@ -542,8 +586,8 @@ function svgBanda(L, hs, opts){
   let s = `<div style="position:relative">
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="display:block;width:100%;height:${opts.alto||78}px">
     <rect x="0" y="0" width="${W}" height="${H}" fill="#000"/>
-    <line x1="0" y1="${top}" x2="${W}" y2="${top}" stroke="#FFC000" stroke-width="3"/>
-    <line x1="0" y1="${H-top}" x2="${W}" y2="${H-top}" stroke="#FFC000" stroke-width="3"/>
+    <line x1="0" y1="${top}" x2="${W}" y2="${top}" stroke="#8C96A3" stroke-width="2"/>
+    <line x1="0" y1="${H-top}" x2="${W}" y2="${H-top}" stroke="#8C96A3" stroke-width="2"/>
     ${Array.from({length:SECC-1},(_,i)=>`<line x1="${(i+1)*100}" y1="${top}" x2="${(i+1)*100}" y2="${H-top}" stroke="#333" stroke-width="1" stroke-dasharray="4 4"/>`).join('')}
     <line x1="0" y1="${top+bh}" x2="${W}" y2="${top+bh}" stroke="#222" stroke-width="1"/>
     <line x1="0" y1="${top+2*bh}" x2="${W}" y2="${top+2*bh}" stroke="#222" stroke-width="1"/>`;
