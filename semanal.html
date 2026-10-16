@@ -1488,6 +1488,18 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     return Promise.all(hilos);
   }
 
+  /** Llamada de la importación con espera máxima: si el servidor no responde en 2 min se reintenta una vez
+      (la importación es segura de repetir: reemplaza, no duplica). Evita que quede pegada en un porcentaje. */
+  function llamarImp(fn, d) {
+    function intento() {
+      return new Promise(function (ok, mal) {
+        var t = setTimeout(function () { mal(new Error('sin respuesta del servidor')); }, 120000);
+        llamar(fn, d).then(function (r) { clearTimeout(t); ok(r); }, function (e) { clearTimeout(t); mal(e); });
+      });
+    }
+    return intento().catch(function (e) { if (/sin respuesta|conexi|red|fetch|débil/i.test((e && e.message) || '')) return intento(); throw e; });
+  }
+
   function ejecutarImportacion() {
     if (!navigator.onLine) { toast('Para importar se necesita conexión.'); return; }
     var archivos = importacion.archivos.filter(function (a) { return !a.error; }), vistas = {};
@@ -1512,7 +1524,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
           var c = a.cintas[tag];
           tareas.push(function () {
             paso('S' + a.semana + ' ' + a.anio + ' · cinta ' + tag);
-            return llamar('guardarCinta', { anio: a.anio, semana: a.semana, tag: tag, prioridad: c.prioridad, descripcion: c.descripcion, fechaCambio: c.fechaCambio, proyeccion: c.proyeccion,
+            return llamarImp('guardarCinta', { anio: a.anio, semana: a.semana, tag: tag, prioridad: c.prioridad, descripcion: c.descripcion, fechaCambio: c.fechaCambio, proyeccion: c.proyeccion,
                                             medida: c.medida, recomendacion: c.recomendacion, fotos: [], fotosPropias: c.fotos, fuente: fuente })
               .then(function (r) { revisar(r, 'cinta ' + tag); c.urls = r.fotos || []; guardarImgs(c.fotos, c.urls); hechos++; });
           });
@@ -1521,7 +1533,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
           var f = a.focos[tag];
           tareas.push(function () {
             paso('S' + a.semana + ' ' + a.anio + ' · aseo ' + tag);
-            return llamar('guardarFoco', { anio: a.anio, semana: a.semana, tag: tag, prioridad: f.prioridad, descripcion: f.descripcion, causa: f.causa, comentarios: f.comentarios, fotos: f.fotos })
+            return llamarImp('guardarFoco', { anio: a.anio, semana: a.semana, tag: tag, prioridad: f.prioridad, descripcion: f.descripcion, causa: f.causa, comentarios: f.comentarios, fotos: f.fotos })
               .then(function (r) { revisar(r, 'aseo ' + tag); guardarImgs(f.fotos, r.fotos); hechos++; });
           });
         });
@@ -1531,7 +1543,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
             var c = a.cintas[tag];
             return { tag: tag, prioridad: c.prioridad, descripcion: c.descripcion, fechaCambio: c.fechaCambio, proyeccion: c.proyeccion, medida: c.medida, recomendacion: c.recomendacion, fotos: [], fotosPropias: c.urls || [], fuente: fuente };
           });
-          return filas.length ? llamar('semGuardarReporte', { anio: a.anio, semana: a.semana, cintas: filas }).then(function (r) { revisar(r, 'reporte S' + a.semana); }) : null;
+          return filas.length ? llamarImp('semGuardarReporte', { anio: a.anio, semana: a.semana, cintas: filas }).then(function (r) { revisar(r, 'reporte S' + a.semana); }) : null;
         }).then(function () { hechos++; localDel('cache', 'sem|' + a.anio + '|' + a.semana); });
       });
     });
@@ -1542,7 +1554,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
       var celdas = Object.keys(mapa).map(function (k) { return mapa[k]; });
       if (!celdas.length) return;
       paso('estadísticas');
-      return llamar('importarEstadisticas', { celdas: celdas, sobrescribir: importacion.sobrescribirEst }).then(function (r) { revisar(r, 'estadísticas'); nEst = r.celdas || 0; });
+      return llamarImp('importarEstadisticas', { celdas: celdas, sobrescribir: importacion.sobrescribirEst }).then(function (r) { revisar(r, 'estadísticas'); nEst = r.celdas || 0; });
     }).then(function () {
       velo('');
       var n = archivos.length;
