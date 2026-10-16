@@ -75,7 +75,11 @@
     .seg button { padding: 10px 4px; border: 1px solid var(--border); background: #f4f7f8; border-radius: 6px; font-weight: 700; font-size: .92rem; color: var(--gris); cursor: pointer; }
     .seg button.on { background: var(--teal-osc); color: #fff; border-color: var(--teal-osc); }
     .item textarea { padding: 8px 10px; font-size: .95rem; }
-    .foto-fila { display: grid; grid-template-columns: 1fr 1fr 84px; gap: 6px; margin-top: 8px; align-items: stretch; }
+    .foto-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; align-items: stretch; }
+    .fotos-item { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+    .fotos-item .mini-foto { height: auto; aspect-ratio: 4 / 3; }      /* casilla fija: la foto se recorta al centro y no deforma la fila */
+    .fotos-item .mini-foto img { object-fit: cover; }
+    .fotos-item .vacia { border-style: dashed; background: #f4f7f8; }
     .mini-foto { position: relative; height: 44px; border-radius: 6px; overflow: hidden; background: #e6ecef; border: 1px solid var(--border); font-size: .68rem; color: var(--muted); display: flex; align-items: center; justify-content: center; text-align: center; }
     .mini-foto img { width: 100%; height: 100%; object-fit: contain; display: block; background: #fff; }
     .quitar { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,0,0,.65); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; padding: 0; }
@@ -308,7 +312,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
   }
   function nuevaInspeccion() {
     var it = [];
-    for (var i = 0; i < ITEMS.length; i++) it.push({ c: '', o: '', f: null });
+    for (var i = 0; i < ITEMS.length; i++) it.push({ c: '', o: '', fs: [] });
     return { items: it, medicion: [], mapeo: [], responsables: [], riesgos: riesgosPorDefecto() };
   }
 
@@ -645,7 +649,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
 
   function aplicarGuardado(destino, r) {
     for (var i = 0; i < ITEMS.length; i++) {
-      destino.items[i] = { c: r.cumplimientos[i] || '', o: r.observaciones[i] || '', f: r.fotos[i] ? { url: r.fotos[i] } : null };
+      destino.items[i] = { c: r.cumplimientos[i] || '', o: r.observaciones[i] || '', fs: String(r.fotos[i] || '').split(/\s+/).filter(function (u) { return /^https?:/.test(u); }).slice(0, MAX_FOTOS_ITEM).map(function (u) { return { url: u }; }) };
     }
     destino.medicion = (r.medicion || []).map(function (u) { return { url: u }; });
     destino.mapeo = (r.mapeo || []).map(function (u) { return { url: u }; });
@@ -711,8 +715,11 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     return p;
   }
 
+  var MAX_FOTOS_ITEM = 4;
+  /** Fotos de un punto de la pauta (hasta 4). Acepta el formato anterior de una sola foto (it.f). */
+  function fotosDe(it) { return it ? (it.fs || (it.f ? [it.f] : [])) : []; }
   function imagenesDe(reg) {
-    return reg.items.map(function (it) { return it.f; }).concat(reg.medicion, reg.mapeo).filter(Boolean);
+    return reg.items.reduce(function (a, it) { return a.concat(fotosDe(it)); }, []).concat(reg.medicion, reg.mapeo).filter(Boolean);
   }
   /** Completa .d/.w/.h de las imágenes que solo tienen enlace de Drive. */
   function completarImagenes(reg, esquemaUrl) {
@@ -732,8 +739,14 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     input.value = '';
     if (!dest || !archivos.length) return;
     if (dest.tipo === 'item') {
-      aJpeg(archivos[0], LADO_FOTO).then(function (f) { insp.items[dest.i].f = f; pintarItem(dest.i); })
-        .catch(function () { avisar('No se pudo leer la imagen.', 'err'); });
+      var itm = insp.items[dest.i]; itm.fs = fotosDe(itm); delete itm.f;
+      var libresF = MAX_FOTOS_ITEM - itm.fs.length;
+      if (archivos.length > libresF) avisar('Máximo ' + MAX_FOTOS_ITEM + ' fotos por punto.', 'err');
+      var pf = Promise.resolve();
+      archivos.slice(0, Math.max(libresF, 0)).forEach(function (a) {
+        pf = pf.then(function () { return aJpeg(a, LADO_FOTO); }).then(function (f) { itm.fs.push(f); pintarItem(dest.i); })
+          .catch(function () { avisar('No se pudo leer la imagen.', 'err'); });
+      });
       return;
     }
     var lista = insp[dest.tipo], libres = MAX_ANEXOS - lista.length;
@@ -778,7 +791,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     ta.setAttribute('aria-label', 'Observación de ' + ITEMS[i][0]);
     var nota = document.createElement('div'); nota.className = 'ayuda falta';
     function ponerNota() {
-      var hayObs = !!it.o.trim(), hayFoto = !!it.f;
+      var hayObs = !!it.o.trim(), hayFoto = fotosDe(it).length > 0;
       nota.textContent = hayObs && !hayFoto ? 'Sin foto: en 6.6 saldrá con "Sin registro fotográfico".'
                        : !hayObs && hayFoto ? 'Falta la observación: sin ella este punto no aparece en 6.6.' : '';
     }
@@ -788,10 +801,19 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     var bc = document.createElement('button'); bc.type = 'button'; bc.className = 'btn-sec'; bc.textContent = '📷 Cámara';
     bc.addEventListener('click', function () { destinoFoto = { tipo: 'item', i: i }; $('inCamara').click(); });
     var ba = document.createElement('button'); ba.type = 'button'; ba.className = 'btn-sec'; ba.textContent = '📁 Archivo';
-    ba.addEventListener('click', function () { destinoFoto = { tipo: 'item', i: i }; $('inArchivo').click(); });
+    ba.addEventListener('click', function () { destinoFoto = { tipo: 'item', i: i }; $('inArchivos').click(); });   // permite elegir varias
+    var fs = fotosDe(it), llena = fs.length >= MAX_FOTOS_ITEM;
+    bc.disabled = ba.disabled = llena;
     ff.appendChild(bc); ff.appendChild(ba);
-    ff.appendChild(miniatura(it.f, 'mini-foto', 'Sin foto', function () { it.f = null; pintarItem(i); }));
     caja.appendChild(ff);
+    var grilla = document.createElement('div'); grilla.className = 'fotos-item';   // 4 casillas fijas: hasta 4 fotos por punto
+    for (var q = 0; q < MAX_FOTOS_ITEM; q++) {
+      (function (q) {
+        if (fs[q]) grilla.appendChild(miniatura(fs[q], 'mini-foto', '', function () { it.fs = fotosDe(it); delete it.f; it.fs.splice(q, 1); pintarItem(i); }));
+        else { var v = document.createElement('div'); v.className = 'mini-foto vacia'; v.textContent = q === 0 ? 'Sin foto' : ''; grilla.appendChild(v); }
+      })(q);
+    }
+    caja.appendChild(grilla);
     caja.appendChild(nota); ponerNota();
   }
 
@@ -947,7 +969,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
       if (f.url || !f.d) return;
       var nombre = 'Insp_' + reg.tag + '_' + reg.semana + '_' + (++n) + '_' + Date.now() + '.jpg';
       p = p.then(function () { return servidor('subirImagenDrive', f.d, nombre); }).then(function (r) {
-        if (!r || !r.exito) throw new Error('no se pudo subir una foto: ' + (r && r.error));
+        if (!r || !r.exito) { var ef = new Error('no se pudo subir una foto: ' + (r && r.error)); ef.rechazo = true; throw ef; }   // se ve en "Pendientes" y se reintenta
         f.url = r.url; cacheImg[r.url] = { d: f.d, w: f.w, h: f.h };
         return guardarEnCola(reg).catch(function () {});
       });
@@ -955,7 +977,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     return p.then(function () {
       return servidor('guardarInspeccion', {
         tagEquipo: reg.tag, semana: reg.semana, anio: reg.anio, fecha: reg.fecha, ot: reg.ot, origen: reg.origen,
-        evaluaciones: reg.items.map(function (it) { return { cumple: it.c, obs: it.o, foto: it.f && it.f.url ? it.f.url : '' }; }),
+        evaluaciones: reg.items.map(function (it) { return { cumple: it.c, obs: it.o, foto: fotosDe(it).filter(function (f) { return f.url; }).map(function (f) { return f.url; }).join('\n') }; }),
         medicion: reg.medicion.map(function (f) { return f.url; }), mapeo: reg.mapeo.map(function (f) { return f.url; }),
         responsables: responsablesATexto(reg.responsables), riesgos: reg.riesgos || []
       });
@@ -1792,7 +1814,7 @@ function graficoEspesores_(doc, b, y, H) {
     var hallazgos = [];
     reg.items.forEach(function (it, i) {
       var obs = String(it.o || '').trim();
-      if (obs) hallazgos.push({ nombre: ITEMS[i][0], obs: obs, f: it.f || null });      // 6.6: toda observación; la foto si existe
+      if (obs) hallazgos.push({ nombre: ITEMS[i][0], obs: obs, fs: fotosDe(it) });      // 6.6: toda observación, con sus fotos (hasta 4)
     });
     var conObs = hallazgos.length > 0 || reg.items.some(function (it) { return String(it.o || '').trim(); });
 
@@ -2051,7 +2073,16 @@ function graficoEspesores_(doc, b, y, H) {
         celda(x6 + c6[0], yy, c6[1], hObs, hz ? hz.obs : '', { tam: 7 });
         celda(xf, yy, c6[2], hObs, '');
         // La foto se ajusta dentro de su celda dejando un margen, sin deformarse ni salirse.
-        if (hz && hz.f) { if (hz.f.d) pdf.imagen(hz.f, xf + 0.05, yy + 0.05, c6[2] - 0.1, hObs - 0.1); else sinImagen(xf, yy, c6[2], hObs); }
+        if (hz && hz.fs.length) {
+          // Hasta 4 fotos en la celda de respaldo: 1 ocupa toda la celda; 2 lado a lado; 3 o 4 en grilla de 2 x 2.
+          // Cada foto se ajusta dentro de su espacio sin deformarse y la celda mantiene su tamaño.
+          var nf = Math.min(hz.fs.length, MAX_FOTOS_ITEM), colsF = nf === 1 ? 1 : 2, filasF = nf <= 2 ? 1 : 2, mg = 0.05;
+          var wF = (c6[2] - mg * (colsF + 1)) / colsF, hFo = (hObs - mg * (filasF + 1)) / filasF;
+          hz.fs.slice(0, nf).forEach(function (fo, j) {
+            var fx = xf + mg + (j % colsF) * (wF + mg), fy = yy + mg + Math.floor(j / colsF) * (hFo + mg);
+            if (fo.d) pdf.imagen(fo, fx, fy, wF, hFo); else sinImagen(fx, fy, wF, hFo);
+          });
+        }
         else if (hz) pdf.parrafo('Sin registro fotográfico', xf, yy, c6[2], hObs, { tam: 7, color: 'A6A6A6' });
       }
       if (p === paginasObs - 1) pdf.imagenExacta(R.cierre, 0, R.cierre.y, ANCHO, R.cierre.alto);
