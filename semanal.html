@@ -223,9 +223,9 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
           if (p.anio === datos.anio) { (datos.estadisticas[p.tag] = datos.estadisticas[p.tag] || [])[p.semana - 1] = p.prioridad ? p.prioridad.charAt(0) : ''; }
           if (p.anio === datos.anio && p.semana === datos.semana) datos.focos[p.tag] = { prioridad: p.prioridad, descripcion: p.descripcion, causa: p.causa, comentarios: p.comentarios, fotos: p.fotos.slice() };
         } else if (c.tipo === 'reporte') {
-          if (p.anio === datos.anio && p.semana === datos.semana) p.cintas.forEach(function (x) { datos.cintas[x.tag] = { anio: p.anio, semana: p.semana, prioridad: x.prioridad, descripcion: x.descripcion, fechaCambio: x.fechaCambio, proyeccion: x.proyeccion, medida: x.medida, recomendacion: x.recomendacion, fotos: x.fotos, fotosPropias: x.fotosPropias || [], fuente: x.fuente }; });
+          if (p.anio === datos.anio && p.semana === datos.semana) p.cintas.forEach(function (x) { datos.cintas[x.tag] = { anio: p.anio, semana: p.semana, prioridad: x.prioridad, descripcion: x.descripcion, fechaCambio: x.fechaCambio, proyeccion: x.proyeccion, medida: x.medida, recomendacion: x.recomendacion, fotos: x.fotos, fotosPropias: x.fotosPropias || [], fuente: x.fuente, sinFotos: !!x.sinFotos }; });
         } else if (p.anio === datos.anio && p.semana === datos.semana) {
-          datos.cintas[p.tag] = { anio: p.anio, semana: p.semana, prioridad: p.prioridad, descripcion: p.descripcion, fechaCambio: p.fechaCambio, proyeccion: p.proyeccion, medida: p.medida, recomendacion: p.recomendacion, fotos: p.fotos, fotosPropias: (p.fotosPropias || []).slice(), fuente: p.fuente };
+          datos.cintas[p.tag] = { anio: p.anio, semana: p.semana, prioridad: p.prioridad, descripcion: p.descripcion, fechaCambio: p.fechaCambio, proyeccion: p.proyeccion, medida: p.medida, recomendacion: p.recomendacion, fotos: p.fotos, fotosPropias: (p.fotosPropias || []).slice(), fuente: p.fuente, sinFotos: !!p.sinFotos };
         }
       });
       return datos;
@@ -273,7 +273,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     return { prioridad: base.prioridad || '', recomendacion: base.recomendacion || '',
              descripcion: aDesc ? p.descripcion : (base.descripcion || ''), fechaCambio: aCambio ? e.fechaCambio : (base.fechaCambio || ''),
              proyeccion: aProy ? e.proyeccion : (base.proyeccion || 'N/A'), medida: aProy ? e.medida : (base.medida || 'N/A'),
-             fotosPauta: p ? p.fotos : (base.fotos || []), propias: g ? (g.fotosPropias || []) : (v.fotosPropias || []), heredaFotos: !g && !!(v.fotosPropias || []).length, fuente: p ? p.fuente : (base.fuente || ''),
+             fotosPauta: p ? p.fotos : (base.fotos || []), propias: g && ((g.fotosPropias || []).length || g.sinFotos) ? (g.fotosPropias || []) : (v.fotosPropias || []), heredaFotos: !(g && ((g.fotosPropias || []).length || g.sinFotos)) && !!(v.fotosPropias || []).length, sinFotos: !!(g && g.sinFotos), fuente: p ? p.fuente : (base.fuente || ''),
              aDesc: aDesc, aCambio: aCambio, aProy: aProy, aMed: aProy, oCambio: aCambio ? 'esp' : 'man', oProy: aProy ? 'esp' : 'man', muestreo: aProy ? e.muestreo : '',
              guardado: !!g, heredado: !g && !!v.semana, desde: v.semana, cerrada: false };
   }
@@ -416,8 +416,9 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
   }
   function guardarCintaLocal(tag, cambios) {
     var v = cinta(tag), reg = { anio: D.anio, semana: D.semana, tag: tag, prioridad: v.prioridad, descripcion: v.descripcion, fechaCambio: v.fechaCambio, proyeccion: v.proyeccion,
-                                 medida: v.medida, recomendacion: v.recomendacion, fotos: v.fotosPauta, fotosPropias: v.propias.slice(), fuente: v.fuente };
+                                 medida: v.medida, recomendacion: v.recomendacion, fotos: v.fotosPauta, fotosPropias: v.propias.slice(), fuente: v.fuente, sinFotos: v.sinFotos };
     for (var k in cambios) reg[k] = cambios[k];
+    if (!('sinFotos' in cambios) && (reg.fotosPropias || []).length) reg.sinFotos = false;
     D.cintas[tag] = reg;
     cabecera(tag); resumen();
     return encolar('cinta', JSON.parse(JSON.stringify(reg)));
@@ -500,7 +501,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     }
     if (t.dataset.foto) { fotoDestino = tag; var inp = $(t.dataset.foto === 'camara' ? 'inCamara' : 'inArchivo'); inp.value = ''; inp.click(); return; }
     if (t.dataset.quitar !== undefined) {
-      if (tab === 'cintas') { var fc = cinta(tag).propias.slice(); fc.splice(+t.dataset.quitar, 1); guardarCintaLocal(tag, { fotosPropias: fc }); }
+      if (tab === 'cintas') { var fc = cinta(tag).propias.slice(); fc.splice(+t.dataset.quitar, 1); guardarCintaLocal(tag, { fotosPropias: fc, sinFotos: !fc.length }); }
       else { var fs = (D.focos[tag].fotos || []).slice(); fs.splice(+t.dataset.quitar, 1); guardarFocoLocal(tag, { fotos: fs }); }
       cuerpo(tag);
     }
@@ -1090,7 +1091,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
   function guardarReporteLocal() {
     var filas = D.equipos.map(function (e) {
       var v = cinta(e[1]);
-      return { tag: e[1], prioridad: v.prioridad, descripcion: v.descripcion, fechaCambio: v.fechaCambio, proyeccion: v.proyeccion, medida: v.medida, recomendacion: v.recomendacion, fotos: v.fotosPauta, fotosPropias: v.propias, fuente: v.fuente };
+      return { tag: e[1], prioridad: v.prioridad, descripcion: v.descripcion, fechaCambio: v.fechaCambio, proyeccion: v.proyeccion, medida: v.medida, recomendacion: v.recomendacion, fotos: v.fotosPauta, fotosPropias: v.propias, fuente: v.fuente, sinFotos: v.sinFotos };
     });
     var sin = filas.filter(function (f) { return !f.prioridad; }).length, cc = { CRITICA: 0, ALTA: 0, MEDIA: 0, BAJA: 0 }, cf = { CRITICA: 0, ALTA: 0, MEDIA: 0, BAJA: 0 };
     filas.forEach(function (f) { if (cc[f.prioridad] !== undefined) cc[f.prioridad]++; D.cintas[f.tag] = { anio: D.anio, semana: D.semana, prioridad: f.prioridad, descripcion: f.descripcion, fechaCambio: f.fechaCambio, proyeccion: f.proyeccion, medida: f.medida, recomendacion: f.recomendacion, fotos: f.fotos, fotosPropias: f.fotosPropias, fuente: f.fuente }; });
