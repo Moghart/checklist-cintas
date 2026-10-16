@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1170,7 +1169,7 @@ function pintarMuestreo() {
     f('Especificación', c.espec) + f('Fabricante', c.fabricante) + f('Grado cubierta', c.grado) + f('Ancho', c.ancho + ' mm') +
     f('Espesor carga / retorno', c.espCarga + ' / ' + c.espRet + ' mm') + f('Seguridad carga / retorno', c.segCarga + ' / ' + c.segRet + ' mm') +
     f('Fecha de cambio', fmtFecha_(c.fechaCambio)) + f('Muestreo anterior', ant ? fmtFecha_(ant.fecha) + ' · mín. ' + fmtNum_(minimo_(ant.carga)) + ' mm' : 'Sin muestreos previos') + '</div>' +
-    '<div class="barra" style="margin:8px 0 0"><button type="button" class="btn mini" id="b-cambio">' + (window.TRAMO_FORM ? '⇄ Cambio / nuevo tramo' : 'Registrar cambio de cinta' + (multi ? ' · ' + h(c.tramo) : '')) + '</button></div>';
+    '<div class="barra" style="margin:8px 0 0"><button type="button" class="btn mini" id="b-cambio">' + (window.TRAMO_FORM ? '⇄ Cambio de cinta / tramo' : 'Registrar cambio de cinta' + (multi ? ' · ' + h(c.tramo) : '')) + '</button></div>';
 
   s += '<div class="barra"><div class="seg">' +
     '<button type="button" data-cub="carga" class="' + (ui.cub === 'carga' ? 'act' : '') + '">Carga ' + contar(t, 'carga') + '/24</button>' +
@@ -1896,4 +1895,3 @@ window.__app = { sincronizar: sincronizar, estado: function () { return { visita
   </script>
 </body>
 </html>
-
