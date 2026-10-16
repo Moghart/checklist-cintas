@@ -273,7 +273,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     return { prioridad: base.prioridad || '', recomendacion: base.recomendacion || '',
              descripcion: aDesc ? p.descripcion : (base.descripcion || ''), fechaCambio: aCambio ? e.fechaCambio : (base.fechaCambio || ''),
              proyeccion: aProy ? e.proyeccion : (base.proyeccion || 'N/A'), medida: aProy ? e.medida : (base.medida || 'N/A'),
-             fotosPauta: p ? p.fotos : (base.fotos || []), propias: (g && g.fotosPropias) || [], fuente: p ? p.fuente : (base.fuente || ''),
+             fotosPauta: p ? p.fotos : (base.fotos || []), propias: g ? (g.fotosPropias || []) : (v.fotosPropias || []), heredaFotos: !g && !!(v.fotosPropias || []).length, fuente: p ? p.fuente : (base.fuente || ''),
              aDesc: aDesc, aCambio: aCambio, aProy: aProy, aMed: aProy, oCambio: aCambio ? 'esp' : 'man', oProy: aProy ? 'esp' : 'man', muestreo: aProy ? e.muestreo : '',
              guardado: !!g, heredado: !g && !!v.semana, desde: v.semana, cerrada: false };
   }
@@ -346,7 +346,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
         '<div class="campo"><label>Registro fotográfico <span class="origen">— máximo ' + MAX_FOTOS_CINTA + ' fotos en el reporte; primero las del inspector y luego las de la pauta</span></label>' +
         (cupo ? '<div class="nota" style="margin:4px 0">Fotos de la pauta (punto 6.3, componente Cinta)' + (omitidas ? ': ' + omitidas + ' no salen en el reporte por el máximo de ' + MAX_FOTOS_CINTA : '') + '</div><div class="fotos" id="fp_' + tag + '"></div>' :
                 (v.fotosPauta.length ? '<div class="nota" style="margin:4px 0">Las ' + v.fotosPauta.length + ' fotos de la pauta no salen en el reporte: ya hay ' + MAX_FOTOS_CINTA + ' fotos del inspector.</div>' : '<div class="nota" style="margin:4px 0">La pauta no tiene fotos de la cinta.</div>')) +
-        (v.cerrada && !v.propias.length ? '' : '<div class="nota" style="margin:8px 0 4px">Fotos agregadas por el inspector (hasta ' + MAX_FOTOS + ')</div><div class="fotos" id="fi_' + tag + '"></div>') +
+        (v.cerrada && !v.propias.length ? '' : '<div class="nota" style="margin:8px 0 4px">Fotos agregadas por el inspector (hasta ' + MAX_FOTOS + ')' + (v.heredaFotos ? ' — vienen de la semana ' + v.desde + '; se mantienen hasta que las cambie' : '') + '</div><div class="fotos" id="fi_' + tag + '"></div>') +
         (v.propias.length < MAX_FOTOS ? '<div class="acciones"><button type="button" class="btn-sec" data-foto="camara">Tomar foto</button><button type="button" class="btn-sec" data-foto="archivo">Cargar desde el equipo</button></div>' : '') + '</div>';
       if (cupo) fotosEn($('fp_' + tag), v.fotosPauta.slice(0, cupo), false, tag);
       if ($('fi_' + tag)) fotosEn($('fi_' + tag), v.propias, true, tag);
