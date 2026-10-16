@@ -64,6 +64,8 @@
     .btn-sec:disabled { color: #93a1a8; border-color: #c9d3d8; cursor: default; }
     .mini { border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: 7px 10px; font-size: .8rem; cursor: pointer; color: var(--text); }
     .mini.rojo { color: var(--err); border-color: var(--err); }
+    .componente { font-size: .95rem; font-weight: 800; color: #fff; background: var(--teal-osc); border-radius: 6px; padding: 6px 10px; margin: 18px 0 4px; }
+    .componente:first-child { margin-top: 0; }
     .grupo { font-size: .8rem; font-weight: 700; color: var(--teal-osc); margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 2px solid #d5e6ea; }
     .grupo:first-child { margin-top: 0; }
     .item { border: 1px solid #dbe3e7; border-left: 4px solid #b9c5cb; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
@@ -262,10 +264,11 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     ['Cantos Izq - Exposición Carcaza', 'Exposición de carcaza'], ['Cantos Der - Desprendimiento Canto', 'Desprendimientos de canto'],
     ['Cantos Der - Desgaste Canto', 'Desgaste de canto'], ['Cantos Der - Exposición Carcaza', 'Exposición de carcaza'],
     ['Cortes Transversales', 'Cortes'], ['Cortes Longitudinales', 'Cortes'], ['Desalineamiento Cinta', 'Desalineamiento'],
-    ['Aseo - Material Acumulado', 'Material acumulado en contacto con cinta'], ['Raspador - Sistema Ajuste', 'Malas condiciones de operación']
+    ['Aseo - Material Acumulado', 'Material acumulado en contacto con cinta'], ['Raspador Primario', 'Primario: malas condiciones de operación'],
+    ['Raspador Secundario', 'Secundario: malas condiciones de operación'], ['Raspador Arado / V-plow', 'Arado o V-plow: malas condiciones de operación']
   ];
   // [primer punto, último punto, texto] para las columnas "Componentes" y "Descripción de actividad".
-  var COMPONENTES = [[0, 22, 'Cinta'], [23, 23, 'Aseo'], [24, 24, 'Raspador (Primario, Secundario y Arado o Diagonal)']];
+  var COMPONENTES = [[0, 22, 'Cinta'], [23, 23, 'Aseo'], [24, 26, 'Raspador (Primario, Secundario y Arado o Diagonal)']];
   var ACTIVIDADES = [
     [0, 3, 'Revisar estado de la cubierta de carga'], [4, 7, 'Revisar estado de cubierta de retorno'],
     [8, 13, 'Revisar estado de empalme y sello de la cinta'], [14, 16, 'Revisar estado de cantos lado izquierdo'],
@@ -273,7 +276,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     [21, 21, 'Revisar si presenta corte longitudinales'],
     [22, 22, 'Revisar desalineamiento de la cinta (en caso de existir), en su largo total e identificar lugar'],
     [23, 23, 'Material acumulado generando desgaste de cinta (en caso de existir), en su largo total e identificar lugar'],
-    [24, 24, 'Identificar sistema de ajuste']
+    [24, 26, 'Identificar sistema de ajuste']
   ];
   // Riesgos de fatalidad del punto 3 (el número define su casilla en la grilla de la primera página).
   var RIESGOS = ['Energía eléctrica', 'Trabajos en altura', 'Maniobras de izaje', 'Liberación descontrolada de energías', 'Caída de rocas en mina rajo',
@@ -748,6 +751,10 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
   function pintarItems() {
     var cont = $('contItems'); cont.innerHTML = '';
     ACTIVIDADES.forEach(function (act) {
+      COMPONENTES.forEach(function (c) {   // título del componente (Cinta, Aseo, Raspador) antes de su primera actividad
+        if (c[0] !== act[0]) return;
+        var h = document.createElement('div'); h.className = 'componente'; h.textContent = c[2]; cont.appendChild(h);
+      });
       var g = document.createElement('div'); g.className = 'grupo'; g.textContent = act[2]; cont.appendChild(g);
       for (var i = act[0]; i <= act[1]; i++) { var d = document.createElement('div'); d.id = 'item' + i; cont.appendChild(d); pintarItem(i); }
     });

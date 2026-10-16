@@ -336,7 +336,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
       var v = cinta(tag), man = 'ingreso manual', reg = 'registro guardado de la semana (sin muestreos en Medición de Espesores)';
       var esp = 'Medición de espesores' + (v.muestreo ? ', último muestreo hasta la semana ' + D.semana + ': ' + v.muestreo.split('-').reverse().join('-') : '');
       var cupo = Math.min(v.fotosPauta.length, Math.max(0, MAX_FOTOS_CINTA - v.propias.length)), omitidas = v.fotosPauta.length - cupo;
-      c.innerHTML = campoTxt('descripcion', 'Descripción de falla', v.descripcion, v.aDesc, v.aDesc ? (/Mapeo/.test(v.fuente || '') ? v.fuente : (v.fuente || 'Pauta de inspección') + ', punto 6.3 componente Cinta') : 'sin observaciones en la pauta ni hallazgos en el Mapeo: ' + man, 5) +
+      c.innerHTML = campoTxt('descripcion', 'Descripción de falla', v.descripcion, v.aDesc, v.aDesc ? (/Mapeo/.test(v.fuente || '') ? v.fuente : (v.fuente || 'Pauta de inspección') + ', punto 6.3: cinta y raspadores') : 'sin observaciones en la pauta ni hallazgos en el Mapeo: ' + man, 5) +
         '<div class="campo"><label>Prioridad <span class="origen">— la define el inspector según las observaciones de la pauta' + (v.heredado ? '; se muestra la vigente desde la semana ' + v.desde : '') + '</span></label>' + botonesPrio(v.prioridad) + '</div>' +
         '<div class="rejilla">' +
         campoTxt('fechaCambio', 'Fecha de cambio de cinta', v.fechaCambio, v.aCambio, v.oCambio === 'esp' ? 'Medición de espesores' : (v.oCambio === 'reg' ? reg : man)) +
@@ -344,7 +344,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
         campoTxt('medida', 'Medida menor de espesor', v.medida, v.aMed, v.oProy === 'esp' ? esp : (v.oProy === 'reg' ? reg : 'sin muestreos: ' + man)) + '</div>' +
         campoTxt('recomendacion', 'Recomendación de reparación o cambio', v.recomendacion, false, 'la ingresa el operador', 3) +
         '<div class="campo"><label>Registro fotográfico <span class="origen">— máximo ' + MAX_FOTOS_CINTA + ' fotos en el reporte; primero las del inspector y luego las de la pauta</span></label>' +
-        (cupo ? '<div class="nota" style="margin:4px 0">Fotos de la pauta (punto 6.3, componente Cinta)' + (omitidas ? ': ' + omitidas + ' no salen en el reporte por el máximo de ' + MAX_FOTOS_CINTA : '') + '</div><div class="fotos" id="fp_' + tag + '"></div>' :
+        (cupo ? '<div class="nota" style="margin:4px 0">Fotos de la pauta (punto 6.3: cinta y raspadores)' + (omitidas ? ': ' + omitidas + ' no salen en el reporte por el máximo de ' + MAX_FOTOS_CINTA : '') + '</div><div class="fotos" id="fp_' + tag + '"></div>' :
                 (v.fotosPauta.length ? '<div class="nota" style="margin:4px 0">Las ' + v.fotosPauta.length + ' fotos de la pauta no salen en el reporte: ya hay ' + MAX_FOTOS_CINTA + ' fotos del inspector.</div>' : '<div class="nota" style="margin:4px 0">La pauta no tiene fotos de la cinta.</div>')) +
         (v.cerrada && !v.propias.length ? '' : '<div class="nota" style="margin:8px 0 4px">Fotos agregadas por el inspector (hasta ' + MAX_FOTOS + ')' + (v.heredaFotos ? ' — vienen de la semana ' + v.desde + '; se mantienen hasta que las cambie' : '') + '</div><div class="fotos" id="fi_' + tag + '"></div>') +
         (v.propias.length < MAX_FOTOS ? '<div class="acciones"><button type="button" class="btn-sec" data-foto="camara">Tomar foto</button><button type="button" class="btn-sec" data-foto="archivo">Cargar desde el equipo</button></div>' : '') + '</div>';
