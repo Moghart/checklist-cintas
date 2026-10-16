@@ -174,6 +174,14 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     return Math.floor((dia + (ene1.getDay() + 6) % 7) / 7) + 1;
   }
   function claveSem(a, s) { return a * 100 + s; }
+  /** Fotos del inspector: las de esta semana si se guardaron; si no, las de la semana anterior,
+      salvo que haya una pauta más nueva que esa semana (entonces mandan las fotos de la pauta nueva y no se mezclan semanas). */
+  function propiasDe(g, v, p) {
+    if (g && ((g.fotosPropias || []).length || g.sinFotos)) return g.fotosPropias || [];
+    if (!v || !(v.fotosPropias || []).length) return [];
+    if (p && p.semana && p.anio && claveSem(p.anio, p.semana) > claveSem(v.anio || 0, v.semana || 0)) return [];
+    return v.fotosPropias;
+  }
   function llamar(fn) {
     var args = Array.prototype.slice.call(arguments, 1);
     return new Promise(function (ok, mal) {
@@ -273,7 +281,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     return { prioridad: base.prioridad || '', recomendacion: base.recomendacion || '',
              descripcion: aDesc ? p.descripcion : (base.descripcion || ''), fechaCambio: aCambio ? e.fechaCambio : (base.fechaCambio || ''),
              proyeccion: aProy ? e.proyeccion : (base.proyeccion || 'N/A'), medida: aProy ? e.medida : (base.medida || 'N/A'),
-             fotosPauta: p ? p.fotos : (base.fotos || []), propias: g && ((g.fotosPropias || []).length || g.sinFotos) ? (g.fotosPropias || []) : (v.fotosPropias || []), heredaFotos: !(g && ((g.fotosPropias || []).length || g.sinFotos)) && !!(v.fotosPropias || []).length, sinFotos: !!(g && g.sinFotos), fuente: p ? p.fuente : (base.fuente || ''),
+             fotosPauta: p ? p.fotos : (base.fotos || []), propias: propiasDe(g, v, p), heredaFotos: !(g && ((g.fotosPropias || []).length || g.sinFotos)) && propiasDe(null, v, p).length > 0, sinFotos: !!(g && g.sinFotos), fuente: p ? p.fuente : (base.fuente || ''),
              aDesc: aDesc, aCambio: aCambio, aProy: aProy, aMed: aProy, oCambio: aCambio ? 'esp' : 'man', oProy: aProy ? 'esp' : 'man', muestreo: aProy ? e.muestreo : '',
              guardado: !!g, heredado: !g && !!v.semana, desde: v.semana, cerrada: false };
   }
@@ -342,7 +350,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
         campoTxt('fechaCambio', 'Fecha de cambio de cinta', v.fechaCambio, v.aCambio, v.oCambio === 'esp' ? 'Medición de espesores' : (v.oCambio === 'reg' ? reg : man)) +
         campoTxt('proyeccion', 'Proyección de cambio (límite de emergencia)', v.proyeccion, v.aProy, v.oProy === 'esp' ? esp : (v.oProy === 'reg' ? reg : 'sin muestreos: ' + man)) +
         campoTxt('medida', 'Medida menor de espesor', v.medida, v.aMed, v.oProy === 'esp' ? esp : (v.oProy === 'reg' ? reg : 'sin muestreos: ' + man)) + '</div>' +
-        campoTxt('recomendacion', 'Recomendación de reparación o cambio', v.recomendacion, false, 'la ingresa el operador', 3) +
+        campoTxt('recomendacion', 'Recomendación de reparación o cambio', v.recomendacion, false, 'la ingresa el operador' + (v.heredado && v.recomendacion ? '; viene de la semana ' + v.desde + ', revísela con la pauta nueva' : ''), 3) +
         '<div class="campo"><label>Registro fotográfico <span class="origen">— máximo ' + MAX_FOTOS_CINTA + ' fotos en el reporte; primero las del inspector y luego las de la pauta</span></label>' +
         (cupo ? '<div class="nota" style="margin:4px 0">Fotos de la pauta (punto 6.3: cinta y raspadores)' + (omitidas ? ': ' + omitidas + ' no salen en el reporte por el máximo de ' + MAX_FOTOS_CINTA : '') + '</div><div class="fotos" id="fp_' + tag + '"></div>' :
                 (v.fotosPauta.length ? '<div class="nota" style="margin:4px 0">Las ' + v.fotosPauta.length + ' fotos de la pauta no salen en el reporte: ya hay ' + MAX_FOTOS_CINTA + ' fotos del inspector.</div>' : '<div class="nota" style="margin:4px 0">La pauta no tiene fotos de la cinta.</div>')) +
