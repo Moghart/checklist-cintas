@@ -57,6 +57,9 @@
   .cab .n { width:26px; color:var(--suave); font-size:13px; text-align:right; }
   .cab .tag { font-weight:bold; font-size:16px; flex:1; }
   .cab .nota { font-size:12px; color:var(--suave); }
+  .cab .nota.pend { color:#8a5a00; background:#FFF4CE; border-radius:10px; padding:2px 8px; }
+  .aviso-sem { margin-top:8px; background:#FFF8E1; border:1px solid #F2C94C; border-radius:8px; padding:8px 10px; font-size:13px; line-height:1.4; }
+  .aviso-sem button { display:block; margin-top:8px; }
   .cab .flecha { color:var(--suave); }
   .cuerpo { display:none; padding:0 10px 12px; border-top:1px solid var(--borde); }
   .tarjeta.abierta .cuerpo { display:block; }
@@ -322,16 +325,38 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
     var c = { ALTA: 0, MEDIA: 0, BAJA: 0, CRITICA: 0 }, sin = 0;
     D.equipos.forEach(function (e) { var p = (tab === 'cintas' ? cinta(e[1]) : foco(e[1])).prioridad; if (c[p] !== undefined) c[p]++; else sin++; });
     var r = $('resumen'); if (!r) return;
+    var aviso = '';
+    if (tab === 'cintas') {
+      var pend = sinGuardar(), nuevas = pend.filter(function (e) { return pautaDeLaSemana(e[1]); }).length;
+      if (pend.length) aviso = '<div class="aviso-sem">⚠ <b>' + pend.length + ' de ' + D.equipos.length + ' cintas sin guardar en la semana ' + D.semana + '.</b> ' +
+        'La descripción, los espesores y las fotos ya vienen actualizados' + (nuevas ? ' (' + nuevas + ' con pauta nueva de esta semana)' : '') +
+        ', pero la prioridad y la recomendación siguen siendo las de la semana anterior hasta que las revise y guarde.' +
+        '<button type="button" class="btn-azul" id="bGuardarSem">Guardar reporte de la semana ' + D.semana + '</button></div>';
+    }
     r.innerHTML = '<b>Semana ' + D.semana + ' de ' + D.anio + ':</b> ' + PRIORIDADES.map(function (p) { return '<span class="chip p-' + p + '">' + p + ' ' + c[p] + '</span>'; }).join(' ') +
-                  (sin ? ' <span class="chip">SIN DATO ' + sin + '</span>' : '');
+                  (sin ? ' <span class="chip">SIN DATO ' + sin + '</span>' : '') + aviso;
+    var bg = $('bGuardarSem');
+    if (bg) bg.onclick = function () {
+      if (!confirm('Se guardan las ' + D.equipos.length + ' cintas de la semana ' + D.semana + ' tal como se ven ahora (prioridad, recomendación, descripción, espesores y fotos).\n¿Continuar?')) return;
+      guardarReporteLocal(); tab = 'cintas'; pintar();
+    };
   }
+  /** La pauta que alimenta esta cinta es de la semana del reporte (llegaron datos nuevos). */
+  function pautaDeLaSemana(tag) { var p = D.pauta[tag]; return !!(p && +p.semana === +D.semana && (!p.anio || +p.anio === +D.anio)); }
+  function sinGuardar() { return D.equipos.filter(function (e) { var c = cinta(e[1]); return !c.cerrada && !c.guardado; }); }
   function tarjeta(tag) { return document.querySelector('.tarjeta[data-tag="' + tag + '"]'); }
   function cabecera(tag) {
     var t = tarjeta(tag); if (!t) return;
     var nota = '', p;
-    if (tab === 'cintas') { var c = cinta(tag); p = c.prioridad; nota = c.cerrada ? 'registro de la semana' : (c.guardado ? 'guardado' : (c.heredado ? 'vigente desde S' + c.desde : '')); }
+    var pend = false;
+    if (tab === 'cintas') {
+      var c = cinta(tag); p = c.prioridad;
+      if (c.cerrada) nota = 'registro de la semana';
+      else if (c.guardado) nota = 'guardado S' + D.semana;
+      else { pend = true; nota = (pautaDeLaSemana(tag) ? 'pauta S' + D.semana + ' nueva' : (c.heredado ? 'datos de S' + c.desde : 'sin datos')) + ' · falta guardar'; }
+    }
     else { var f = foco(tag); p = f.prioridad; nota = f.fotos.length ? f.fotos.length + ' foto' + (f.fotos.length > 1 ? 's' : '') : ''; }
-    t.querySelector('.nota').textContent = nota;
+    var en = t.querySelector('.nota'); en.textContent = nota; en.classList.toggle('pend', pend);
     t.querySelector('.pchip').innerHTML = chip(p);
   }
   function cuerpo(tag) {
@@ -446,7 +471,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
         pendientes = cola.length; estado();
         if (!cola.length || !navigator.onLine) { enviando = false; return; }
         var c = cola[0];
-        llamar({ foco: 'guardarFoco', cinta: 'guardarCinta', reporte: 'guardarReporte' }[c.tipo], c.p).then(function (r) {
+        llamar({ foco: 'guardarFoco', cinta: 'guardarCinta', reporte: 'semGuardarReporte' }[c.tipo], c.p).then(function (r) {
           if (r && r.exito && c.tipo === 'reporte') { reportesLeidos = 0; if (tab === 'hist') cargarReportes(); }
           if (!r || !r.exito) { enviando = false; toast('No se pudo guardar ' + (c.tipo === 'reporte' ? 'el reporte' : c.p.tag) + ': ' + (r && r.error || 'error'), 6000); return; }
           var cambio = {};
@@ -461,7 +486,7 @@ var RECURSOS = {"pptx":{"ppt/slideMasters/slideMaster1.xml":"<\u003fxml version=
             if (D && c.tipo === 'cinta' && D.anio === c.p.anio && D.semana === c.p.semana && D.cintas[c.p.tag]) D.cintas[c.p.tag].fotosPropias = reemplazar(D.cintas[c.p.tag].fotosPropias || []);
             guardarCache(); siguiente();
           });
-        }, function () { enviando = false; estado(); });
+        }, function (e) { enviando = false; estado(); if (navigator.onLine && e && !e.red) toast('No se pudo enviar ' + (c.tipo === 'reporte' ? 'el reporte' : c.p.tag) + ': ' + (e.message || e) + '. Queda en el equipo y se reintenta.', 7000); });
       });
     })();
   }
