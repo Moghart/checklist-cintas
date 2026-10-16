@@ -727,7 +727,15 @@ function modalCambioTramo(t, despues){
 }
 
 
-function modalHallazgo(h){
+/* El permiso se vuelve a confirmar con el servidor antes de abrir un hallazgo: la app instalada puede haber
+   mostrado al inicio una copia antigua de los datos (por ejemplo de antes de iniciar sesión) con otro rol. */
+async function modalHallazgo(h){
+  if((h ? !esAdmin() : !puedeEditar()) && navigator.onLine){
+    try{ await recargarInit(); }catch(e){}
+  }
+  modalHallazgo_(h);
+}
+function modalHallazgo_(h){
   const nuevo=!h, ed = nuevo ? puedeEditar() : esAdmin();
   const tr=tramosActivos();
   h = h || { UBICACION_TIPO:'TRAMO', UBICACION_N:(tr[0]||{}).N_TRAMO||1, FECHA_HALLAZGO:hoy(), CRITICIDAD:'LEVE',
@@ -918,8 +926,16 @@ function visor(src){
     };
     // Llegaron datos más nuevos que la copia del teléfono: se vuelve a pintar (sin tocar lo que se está editando).
     window.PUENTE_DATOS_NUEVOS = function (fn) {
+      // El rol y las listas siempre se actualizan (aunque haya una ficha o una ventana abierta)
+      if (fn === "apiInit" && typeof recargarInit === "function") {
+        recargarInit().then(function () {
+          if (document.querySelector(".modal-bg")) return;
+          try { if (typeof S !== "undefined" && S.data) renderCinta(); else if (typeof renderInicio === "function") renderInicio(); } catch (e) { }
+        }, function () { });
+        return;
+      }
       if (document.querySelector(".modal-bg")) return;
-      if (fn === "apiInit" || fn === "apiGetCinta") window.PUENTE_DESPUES_SYNC();
+      if (fn === "apiGetCinta") window.PUENTE_DESPUES_SYNC();
     };
   </script>
   <script>
