@@ -1040,6 +1040,77 @@ function sincronizar() {
 }
 
 /* ---------------- PDF ---------------- */
+/* ---------- ZIP sin compresión (los PDF ya vienen comprimidos): [{nombre, bytes:Uint8Array}] → Blob ---------- */
+var ZIP_CRC_ = null;
+function zipCrc_(b) {
+  if (!ZIP_CRC_) { ZIP_CRC_ = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; ZIP_CRC_[n] = c >>> 0; } }
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < b.length; i++) crc = ZIP_CRC_[(crc ^ b[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function zipArchivos(lista) {
+  var partes = [], central = [], pos = 0, ahora = new Date();
+  var hora = (ahora.getHours() << 11) | (ahora.getMinutes() << 5) | (ahora.getSeconds() >> 1);
+  var fecha = ((ahora.getFullYear() - 1980) << 9) | ((ahora.getMonth() + 1) << 5) | ahora.getDate();
+  function u16(v) { return [v & 255, (v >>> 8) & 255]; }
+  function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+  var usados = {};
+  lista.forEach(function (a) {
+    var nombre = a.nombre, i = 2;
+    while (usados[nombre]) nombre = a.nombre.replace(/(\.[^.]+)?$/, ' (' + (i++) + ')$1');
+    usados[nombre] = true;
+    var nb = new TextEncoder().encode(nombre), datos = a.bytes, crc = zipCrc_(datos), tam = datos.length;
+    var cab = [].concat([0x50, 0x4B, 0x03, 0x04], u16(20), u16(0x0800), u16(0), u16(hora), u16(fecha), u32(crc), u32(tam), u32(tam), u16(nb.length), u16(0));
+    partes.push(new Uint8Array(cab), nb, datos);
+    central.push(new Uint8Array([].concat([0x50, 0x4B, 0x01, 0x02], u16(20), u16(20), u16(0x0800), u16(0), u16(hora), u16(fecha), u32(crc), u32(tam), u32(tam),
+      u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(pos))), nb);
+    pos += cab.length + nb.length + tam;
+  });
+  var tamCentral = central.reduce(function (s, x) { return s + x.length; }, 0);
+  var fin = new Uint8Array([].concat([0x50, 0x4B, 0x05, 0x06], u16(0), u16(0), u16(lista.length), u16(lista.length), u32(tamCentral), u32(pos), u16(0)));
+  return new Blob(partes.concat(central, [fin]), { type: 'application/zip' });
+}
+function descargarBlob(blob, nombre) {
+  var url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+}
+
+/** Semanas con muestreos (según los datos del teléfono), de la más nueva a la más antigua: [{anio, semana, n}] */
+function semanasConMuestreos() {
+  var m = {}, hoyW = semIso(hoy());
+  m[hoyW.anio + '|' + hoyW.semana] = {};
+  (cat.equipos || []).forEach(function (eq) {
+    eq.cintas.forEach(function (c) {
+      (c.muestras || []).forEach(function (x) {
+        if (String(x.tipo || '').toUpperCase() === 'INICIAL' || !x.fecha) return;
+        var w = semIso(x.fecha), k = w.anio + '|' + w.semana; (m[k] = m[k] || {})[eq.id] = true;
+      });
+    });
+  });
+  return Object.keys(m).map(function (k) { var p = k.split('|'); return { anio: +p[0], semana: +p[1], n: Object.keys(m[k]).length }; })
+    .sort(function (a, b) { return (b.anio * 100 + b.semana) - (a.anio * 100 + a.semana); }).slice(0, 40);
+}
+function zipSemana() {
+  var v = ($('i-sem') || {}).value; if (!v) return;
+  var p = v.split('|'), anio = +p[0], sem = +p[1], b = $('b-zipsem'), nota = $('i-zipnota');
+  if (!hayServidor()) return modal('Sin conexión', 'Para descargar una semana completa se necesita conexión.', [{ t: 'Entendido', cls: 'pri' }]);
+  b.disabled = true; nota.textContent = 'Buscando los muestreos de la semana ' + sem + '…';
+  llamar('apiInformesSemana', { anio: anio, semana: sem }).then(function (r) {
+    if (!r || r.ok === false) throw new Error(r && r.mensaje || 'respuesta no válida');
+    if (!r.items.length) { nota.textContent = 'No hay muestreos registrados en la semana ' + sem + ' de ' + anio + '.'; return; }
+    var archivos = [], errores = [];
+    r.items.forEach(function (it, i) {
+      nota.textContent = 'Generando PDF ' + (i + 1) + ' de ' + r.items.length + '…';
+      try { archivos.push({ nombre: 'Medicion_de_espesores_' + it.equipo.id + '_' + it.visita.fecha + '.pdf', bytes: generarInformePdf(it.equipo, it.visita, logo()) }); }
+      catch (e) { errores.push(it.equipo.id + ' (' + e.message + ')'); }
+    });
+    if (!archivos.length) throw new Error('no se pudo generar ningún PDF: ' + errores.join(', '));
+    descargarBlob(zipArchivos(archivos), 'Espesores_W' + ('0' + sem).slice(-2) + '_' + anio + '.zip');
+    nota.textContent = '✔ Descargado: ' + archivos.length + ' informe' + (archivos.length === 1 ? '' : 's') + ' de la semana ' + sem + ' (' + fmtFecha_(r.desde) + ' al ' + fmtFecha_(r.hasta) + ')' + (errores.length ? '. No se pudieron generar: ' + errores.join(', ') : '.');
+  }).catch(function (e) { nota.textContent = 'No se pudo descargar la semana: ' + e.message; })
+    .then(function () { b.disabled = false; });
+}
 var logoPdf = null;
 function logo() { if (!logoPdf) logoPdf = { datos: atob(LOGO.b64), w: LOGO.w, h: LOGO.h }; return logoPdf; }
 function pdfDe(eq, v) { return generarInformePdf(eq, v, logo()); }
@@ -1411,7 +1482,11 @@ function formCambio(eq, c) {
 
 /* ---------------- Vista: Informes ---------------- */
 function pintarInformes() {
-  var ult = visitas[0], s = '<div class="tar"><h2>Último informe realizado en este dispositivo</h2>';
+  var ult = visitas[0], s = '<div class="tar"><h2>Descargar una semana completa</h2><p class="tenue">Un archivo ZIP con el PDF de cada equipo medido en la semana (también los informes importados del Excel).</p>' +
+    '<div class="campos"><div class="campo"><label for="i-sem">Semana</label><select id="i-sem">' + semanasConMuestreos().map(function (w) {
+      return '<option value="' + w.anio + '|' + w.semana + '">W' + ('0' + w.semana).slice(-2) + ' de ' + w.anio + (w.n ? ' · ' + w.n + (w.n === 1 ? ' equipo' : ' equipos') : ' · sin muestreos en el teléfono') + '</option>'; }).join('') + '</select></div></div>' +
+    '<div class="barra"><button type="button" class="btn nar" id="b-zipsem">Descargar semana (ZIP)</button></div><p class="tenue" id="i-zipnota" role="status"></p></div>';
+  s += '<div class="tar"><h2>Último informe realizado en este dispositivo</h2>';
   if (ult) s += '<div class="item"><div class="d"><b>' + h(ult.equipo) + ' · ' + fmtFecha_(ult.fecha) + '</b><small>' + h(ult.id) + '</small></div>' + chipVisita(ult) + '<button type="button" class="btn nar" data-pdf="' + h(ult.id) + '">Descargar PDF</button></div>';
   else s += '<p class="tenue">Aún no se han hecho muestreos desde este dispositivo.</p>';
   s += '</div><div class="tar"><h2>Último informe de un equipo</h2><div class="campos"><div class="campo"><label for="i-eq">Equipo</label><select id="i-eq">' + selEquipos(ui.eqInf || '') + '</select></div></div><div id="i-det"></div></div>';
@@ -1807,6 +1882,7 @@ document.addEventListener('click', function (e) {
   if ((a = el.getAttribute('data-pdf'))) { var v = visitas.filter(function (x) { return x.id === a; })[0]; return descargar(equipo(v.equipo), v); }
   if ((a = el.getAttribute('data-reemp'))) { var w = visitas.filter(function (x) { return x.id === a; })[0]; w.reemplazar = true; guardar(K.vis, visitas); return sincronizar(); }
   if (el.id === 'estado' || el.id === 'b-sync') return sincronizar();
+  if (el.id === 'b-zipsem') return zipSemana();
   if (el.id === 'b-ulteq') { var eq = equipo(ui.eqInf); return descargar(eq, eq.ultimoInforme); }
   if (el.id === 'b-nuevo') { ui.resultado = null; return pintarMuestreo(); }
   if (el.id === 'imp-elegir') { var fi = $('imp-file'); fi.value = ''; return fi.click(); }

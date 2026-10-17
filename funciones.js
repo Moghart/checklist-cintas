@@ -13,6 +13,7 @@ window.PUENTE_FUNCIONES = {
 "apiGetFotos": "R",
 "apiGuardar": "W",
 "apiImportar": "W",
+"apiInformesSemana": "R",
 "apiInit": "R",
 "apiSaveCinta": "W",
 "apiSaveHallazgo": "W",

@@ -231,6 +231,11 @@
         </div>
         <button type="button" class="btn azul" id="btnInforme" style="margin-top:4px">GENERAR Y DESCARGAR PDF</button>
       </div>
+      <div class="seccion">Todas las pautas de una semana</div>
+      <div class="card">
+        <p class="nota-sem" style="margin:0 0 8px;font-size:13px;color:#5f6b7a">Elija la semana y el año arriba (con el Tag en blanco aparecen todas las semanas guardadas). Se descarga un archivo ZIP con el PDF de cada equipo; puede tardar unos segundos por pauta.</p>
+        <button type="button" class="btn" id="btnZipSemana">DESCARGAR SEMANA COMPLETA (ZIP)</button>
+      </div>
     </div>
   </div>
 
@@ -357,6 +362,7 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     $('btnEspAuto').addEventListener('click', function () { traerEspesoresAuto($('selTag').value, true); });
     $('btnGuardar').addEventListener('click', onGuardar);
     $('btnInforme').addEventListener('click', onInformeGuardado);
+    $('btnZipSemana').addEventListener('click', onZipSemana);
     $('btnPend').addEventListener('click', function () { $('panelPend').classList.toggle('oculto'); pintarPendientes(); });
     $('btnSync').addEventListener('click', function () { sincronizarPendientes(true); });
   });
@@ -928,28 +934,99 @@ var RECURSOS = {"bg1":"data:image/webp;base64,UklGRnhqAgBXRUJQVlA4IGxqAgCQBQmdAS
     });
   }
 
-  function onInformeGuardado() {
-    var eq = equipos[$('filTag').value], n = numSemana($('filSemana').value), anio = parseInt($('filAnio').value, 10);
-    if (!eq || !n || !anio) { avisar(!eq ? 'Seleccione el Tag.' : 'Elija la semana: solo aparecen las que tienen una inspección guardada.', 'err'); return; }
-    if (!navigator.onLine || !hayServidor) { avisar('Se necesita conexión para descargar un informe guardado.', 'err'); return; }
-    velo('Buscando inspección...');
-    servidor('buscarDatosFormulario', eq.tag, 'W' + dos(n), anio).then(function (r) {
+  /** Arma la inspección guardada de un equipo y semana, lista para generar su PDF (con espesores y mapeo). */
+  function regGuardado(eq, n, anio, alAvanzar) {
+    return servidor('buscarDatosFormulario', eq.tag, 'W' + dos(n), anio).then(function (r) {
       if (!r || !r.exito) throw new Error(r && r.error ? r.error : 'respuesta no válida');
       if (!r.esExistente) throw new Error('No hay una inspección guardada de ' + eq.tag + ' en la semana W' + dos(n) + ' de ' + anio + '.');
       var reg = nuevaInspeccion();
       aplicarGuardado(reg, r);
       if (!reg.responsables.length) reg.responsables = textoAResponsables(config.RESPONSABLES);
       reg.tag = eq.tag; reg.semana = 'W' + dos(n); reg.anio = anio; reg.fecha = r.fecha; reg.ot = r.ot; reg.equipo = eq; reg.config = config;
-      velo('Descargando fotos y generando PDF...');
+      if (alAvanzar) alAvanzar();
       var esperas = [];
       if (!reg.medicion.length) esperas.push(pedirEspesores(eq.tag).then(function (m) { if (m.items.length) reg.medicion = m.items; else reg.medicionMotivo = m.texto; },
                                                                       function (e) { reg.medicionMotivo = 'No se pudo consultar la app de espesores: ' + e.message; }));
       if (!reg.mapeo.length) esperas.push(pedirMapeo(eq.tag).then(function (m) { if (m.item) reg.mapeo = [m.item]; else reg.mapeoMotivo = m.texto; },
                                                                function (e) { reg.mapeoMotivo = 'No se pudo consultar la app de mapeo: ' + e.message; }));
-      return Promise.all(esperas).then(function () { return generarYDescargar(reg); });
-    }).then(function () { avisar('PDF descargado.', 'ok'); })
+      return Promise.all(esperas).then(function () { return reg; });
+    });
+  }
+  function onInformeGuardado() {
+    var eq = equipos[$('filTag').value], n = numSemana($('filSemana').value), anio = parseInt($('filAnio').value, 10);
+    if (!eq || !n || !anio) { avisar(!eq ? 'Seleccione el Tag.' : 'Elija la semana: solo aparecen las que tienen una inspección guardada.', 'err'); return; }
+    if (!navigator.onLine || !hayServidor) { avisar('Se necesita conexión para descargar un informe guardado.', 'err'); return; }
+    velo('Buscando inspección...');
+    regGuardado(eq, n, anio, function () { velo('Descargando fotos y generando PDF...'); }).then(function (reg) { return generarYDescargar(reg); })
+      .then(function () { avisar('PDF descargado.', 'ok'); })
       .catch(function (e) { avisar(e.message, 'err', 9000); }).then(function () { velo(''); });
   }
+
+  /** Todas las pautas guardadas de una semana en un ZIP (un PDF por equipo). Se arman de a una para no llenar la memoria. */
+  function onZipSemana() {
+    var n = numSemana($('filSemana').value), anio = parseInt($('filAnio').value, 10);
+    if (!n || !anio) { avisar('Elija la semana: solo aparecen las que tienen inspecciones guardadas.', 'err'); return; }
+    if (!navigator.onLine || !hayServidor) { avisar('Se necesita conexión para descargar las pautas de la semana.', 'err'); return; }
+    var tags = (guardadas[anio + '|' + n] || []).filter(function (t) { return equipos[t]; }).sort();
+    if (!tags.length) { avisar('No hay inspecciones guardadas en la semana W' + dos(n) + ' de ' + anio + '.', 'err'); return; }
+    var archivos = [], errores = [], i = 0;
+    $('btnZipSemana').disabled = true;
+    velo('Preparando ' + tags.length + ' pautas de la semana W' + dos(n) + '...');
+    var cadena = prepararRecursos();
+    tags.forEach(function (tag) {
+      cadena = cadena.then(function (recursos) {
+        i++; velo('Pauta ' + i + ' de ' + tags.length + ': ' + tag + ' (fotos y PDF)...');
+        return regGuardado(equipos[tag], n, anio).then(function (reg) {
+          return completarImagenes(reg, reg.equipo.esquema).then(function () {
+            archivos.push({ nombre: 'Informe_Inspeccion_' + tag + '_W' + dos(n) + '.pdf', bytes: construirPdf(reg, recursos) });
+          });
+        }).catch(function (e) { errores.push(tag + ': ' + e.message); }).then(function () { return recursos; });
+      });
+    });
+    cadena.then(function () {
+      if (!archivos.length) throw new Error('No se pudo generar ninguna pauta. ' + errores.join(' · '));
+      velo('Armando el archivo ZIP...');
+      descargarBlob(zipArchivos(archivos), 'Pautas_W' + dos(n) + '_' + anio + '.zip');
+      avisar('ZIP descargado: ' + archivos.length + ' de ' + tags.length + ' pautas de la semana W' + dos(n) + '.' + (errores.length ? ' No se pudieron generar: ' + errores.join(' · ') : ''), errores.length ? 'err' : 'ok', errores.length ? 15000 : 6000);
+    }).catch(function (e) { avisar(e.message, 'err', 12000); })
+      .then(function () { velo(''); $('btnZipSemana').disabled = false; });
+  }
+  /* ---------- ZIP sin compresión (los PDF ya vienen comprimidos): [{nombre, bytes:Uint8Array}] → Blob ---------- */
+  var ZIP_CRC_ = null;
+  function zipCrc_(b) {
+    if (!ZIP_CRC_) { ZIP_CRC_ = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; ZIP_CRC_[n] = c >>> 0; } }
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < b.length; i++) crc = ZIP_CRC_[(crc ^ b[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function zipArchivos(lista) {
+    var partes = [], central = [], pos = 0, ahora = new Date();
+    var hora = (ahora.getHours() << 11) | (ahora.getMinutes() << 5) | (ahora.getSeconds() >> 1);
+    var fecha = ((ahora.getFullYear() - 1980) << 9) | ((ahora.getMonth() + 1) << 5) | ahora.getDate();
+    function u16(v) { return [v & 255, (v >>> 8) & 255]; }
+    function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+    var usados = {};
+    lista.forEach(function (a) {
+      var nombre = a.nombre, i = 2;
+      while (usados[nombre]) nombre = a.nombre.replace(/(\.[^.]+)?$/, ' (' + (i++) + ')$1');
+      usados[nombre] = true;
+      var nb = new TextEncoder().encode(nombre), datos = a.bytes, crc = zipCrc_(datos), tam = datos.length;
+      var cab = [].concat([0x50, 0x4B, 0x03, 0x04], u16(20), u16(0x0800), u16(0), u16(hora), u16(fecha), u32(crc), u32(tam), u32(tam), u16(nb.length), u16(0));
+      partes.push(new Uint8Array(cab), nb, datos);
+      central.push(new Uint8Array([].concat([0x50, 0x4B, 0x01, 0x02], u16(20), u16(20), u16(0x0800), u16(0), u16(hora), u16(fecha), u32(crc), u32(tam), u32(tam),
+        u16(nb.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(pos))), nb);
+      pos += cab.length + nb.length + tam;
+    });
+    var tamCentral = central.reduce(function (s, x) { return s + x.length; }, 0);
+    var fin = new Uint8Array([].concat([0x50, 0x4B, 0x05, 0x06], u16(0), u16(0), u16(lista.length), u16(lista.length), u32(tamCentral), u32(pos), u16(0)));
+    return new Blob(partes.concat(central, [fin]), { type: 'application/zip' });
+  }
+  function descargarBlob(blob, nombre) {
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+  }
+
 
   function descargarPdf(bytes, nombre) {
     var a = document.createElement('a'), url = null;
